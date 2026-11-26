@@ -1,0 +1,455 @@
+# The XENITH launcher's front end: the window whose layout is xenith.xaml (next
+# to this file), with all of its behavior here. Everything underneath goes
+# through the launcher's back end, xenith-core.ps1 (dot-sourced): this file
+# never sets VICTORY_* variables, never assembles run arguments, and only
+# touches xenith.ini through Get-XenithConfig and Set-XenithConfig. Windows
+# PowerShell 5.1, WPF, nothing to install. Start it with xenith-ui.cmd or
+#   powershell -NoProfile -ExecutionPolicy Bypass -STA -File scripts\xenith-ui.ps1
+
+$ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
+Add-Type -AssemblyName System.Windows.Forms
+
+$repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+Push-Location $PSScriptRoot
+. .\xenith-core.ps1
+Pop-Location
+
+$window = [Windows.Markup.XamlReader]::Parse((Get-Content (Join-Path $PSScriptRoot 'xenith.xaml') -Raw))
+
+$ui = @{}
+foreach ($n in @('NavOverview', 'NavNotes', 'NavConsole', 'NavWebsite', 'GpuBadge', 'NoticeBar', 'NoticeText', 'NoticeClose', 'ViewOverview', 'ViewNotes', 'ViewConsole', 'ViewSettings', 'StateDot', 'StateTitle', 'StateSub', 'BtnPlay', 'BtnStop', 'BtnSettings', 'HealthList', 'VersionText', 'BtnCommunity', 'LinkAllNotes', 'CardSetup', 'CardSetupTitle', 'CardSetupBody', 'CardRun', 'CardRunTitle', 'CardRunBody', 'CardNotes', 'CardNotesTitle', 'CardNotesBody', 'NotesList', 'LogPath', 'BtnLogSave', 'BtnLogCopy', 'BtnLogFolder', 'LogBox', 'TxtGame', 'BtnGameBrowse', 'CmbConsole', 'CmbRes', 'CmbBuild', 'CmbAdapter', 'BtnDetect', 'CmbUpscaler', 'ChkQuality', 'ChkRay', 'ChkPreload', 'ChkMinimize', 'TxtCache', 'OpenCache', 'PickCache', 'TxtSaves', 'OpenSaves', 'PickSaves', 'TxtDlss', 'OpenDlss', 'PickDlss', 'TxtLogDir', 'OpenLogDir', 'PickLogDir', 'BtnSave', 'BtnRevert', 'BtnBack', 'SettingsMsg', 'LinkSupport', 'LinkPolicy', 'FooterVer')) {
+    $ui[$n] = $window.FindName($n)
+}
+
+$script:Brushes = New-Object System.Windows.Media.BrushConverter
+$script:BrushOk = $script:Brushes.ConvertFromString('#9BF0CF')
+$script:BrushBad = $script:Brushes.ConvertFromString('#FF7B81')
+$script:BrushText = $script:Brushes.ConvertFromString('#E9EAF5')
+
+$script:RunId = 0
+$script:RunLog = ''
+$script:LogKey = ''
+$script:RepoUrl = 'https://github.com/ASsDevpile/VIctory-NVIDIA'
+
+# --- the small helpers ------------------------------------------------------
+
+function Show-Notice {
+    param([string]$Text)
+    $ui.NoticeText.Text = $Text
+    $ui.NoticeBar.Visibility = 'Visible'
+}
+
+function Hide-Notice {
+    $ui.NoticeBar.Visibility = 'Collapsed'
+}
+
+function Set-View {
+    param([string]$Name)
+    foreach ($v in @('Overview', 'Notes', 'Console', 'Settings')) {
+        $view = $ui[('View' + $v)]
+        $nav = $ui[('Nav' + $v)]
+        if ($v -eq $Name) {
+            $view.Visibility = 'Visible'
+            $nav.Tag = 'active'
+        } else {
+            $view.Visibility = 'Collapsed'
+            $nav.Tag = ''
+        }
+    }
+}
+
+function ConvertTo-OnOff {
+    param([bool]$On)
+    if ($On) { 'on' } else { 'off' }
+}
+
+function Get-ComboTag {
+    param($Combo)
+    $item = $Combo.SelectedItem
+    if ($item -and $null -ne $item.Tag) { return [string]$item.Tag }
+    return ''
+}
+
+function Select-ComboByTag {
+    param($Combo, [string]$Tag)
+    foreach ($item in $Combo.Items) {
+        if ([string]$item.Tag -eq $Tag) { $Combo.SelectedItem = $item; return }
+    }
+    if ($Combo.Items.Count -gt 0) { $Combo.SelectedIndex = 0 }
+}
+
+function Get-Commit {
+    try {
+        $sha = & git -C $repo rev-parse --short HEAD 2>$null
+        if ($LASTEXITCODE -eq 0 -and $sha) { return [string]$sha }
+    } catch { }
+    return 'unknown'
+}
+
+function Add-HealthRow {
+    param([string]$Label, [bool]$Ok)
+    $dot = New-Object System.Windows.Shapes.Ellipse
+    $dot.Width = 8
+    $dot.Height = 8
+    $dot.VerticalAlignment = 'Center'
+    if ($Ok) { $dot.Fill = $script:BrushOk } else { $dot.Fill = $script:BrushBad }
+    $text = New-Object System.Windows.Controls.TextBlock
+    $text.Text = $Label
+    $text.Margin = '10,0,0,0'
+    $text.Foreground = $script:BrushText
+    $text.TextWrapping = 'Wrap'
+    $panel = New-Object System.Windows.Controls.StackPanel
+    $panel.Orientation = 'Horizontal'
+    $panel.Margin = '0,4,0,4'
+    $panel.Children.Add($dot) | Out-Null
+    $panel.Children.Add($text) | Out-Null
+    $ui.HealthList.Children.Add($panel) | Out-Null
+}
+
+function Open-LocalPage {
+    param([string]$File, [string]$Anchor)
+    $page = (Join-Path $repo $File) -replace '\\', '/'
+    $url = 'file:///' + $page
+    if ($Anchor) { $url = $url + '#' + $Anchor }
+    Start-Process $url
+}
+
+# --- what the window shows --------------------------------------------------
+
+function Update-Adapters {
+    $cards = @(Get-XenithAdapters)
+    $selected = [string]$ui.CmbAdapter.SelectedItem
+    $ui.CmbAdapter.Items.Clear()
+    foreach ($card in $cards) { $ui.CmbAdapter.Items.Add([string]$card.name) | Out-Null }
+    if ($cards.Count -gt 0) {
+        $ui.GpuBadge.Text = ('{0}  (driver {1})' -f $cards[0].name, $cards[0].driver)
+        $want = $selected
+        if (-not $want) { $want = [string](Get-XenithConfig)['ADAPTER'] }
+        if ($want -and @($cards | Where-Object { $_.name -eq $want }).Count -gt 0) {
+            $ui.CmbAdapter.SelectedItem = $want
+        } else {
+            $ui.CmbAdapter.SelectedIndex = 0
+        }
+    } else {
+        $ui.GpuBadge.Text = 'no graphics card found'
+    }
+}
+
+function Update-State {
+    $setup = Test-XenithSetup
+    $cfg = Get-XenithConfig
+    $ui.VersionText.Text = ('the runtime: {0}' -f $setup.runtime)
+
+    $ui.HealthList.Children.Clear()
+    Add-HealthRow 'the game exe' ([bool]$setup.game_ok)
+    Add-HealthRow ('the runtime (target\{0})' -f $setup.build) ([bool]$setup.runtime_ok)
+    Add-HealthRow 'the RT skip list (scripts\rt_off_hashes.txt)' ([bool]$setup.rt_list_ok)
+    if ($cfg.UPSCALER -eq 'dlss') {
+        Add-HealthRow 'the NGX files in the DLSS folder' ([bool]$setup.dlss_ok)
+    }
+    if ($cfg.CACHE_DIR) { Add-HealthRow 'the cache folder' (Test-Path $cfg.CACHE_DIR) }
+    if ($cfg.SAVES_DIR) { Add-HealthRow 'the saves folder' (Test-Path $cfg.SAVES_DIR) }
+    if ($cfg.LOG_DIR) { Add-HealthRow 'the log folder' (Test-Path $cfg.LOG_DIR) }
+
+    $missing = @()
+    if (-not $setup.game_ok) { $missing += 'the game exe (Settings > Title)' }
+    if (-not $setup.runtime_ok) { $missing += 'the runtime: cargo build --locked --profile diag -p victory --features diagnostics' }
+    if (-not $setup.rt_list_ok) { $missing += 'the RT skip list: scripts\rt_off_hashes.txt' }
+    if ($cfg.UPSCALER -eq 'dlss' -and -not $setup.dlss_ok) { $missing += 'the NGX files (nvngx_dlss.dll and nvngx.dll) in the DLSS folder' }
+
+    if ($missing.Count -eq 0) {
+        $ui.StateDot.Fill = $script:BrushOk
+        $ui.StateTitle.Text = 'Ready to play'
+        $ui.StateSub.Text = 'Everything a run needs is in place. The console view shows the log while it plays.'
+        $ui.CardSetupTitle.Text = 'Ready to play'
+        $ui.CardSetupBody.Text = 'The title, the runtime and the skip list are all found.'
+    } else {
+        $ui.StateDot.Fill = $script:BrushBad
+        $ui.StateTitle.Text = 'Needs setup'
+        $ui.StateSub.Text = ($missing -join '; ')
+        $ui.CardSetupTitle.Text = 'Needs setup'
+        $ui.CardSetupBody.Text = ($missing -join '; ')
+    }
+    $ui.BtnPlay.IsEnabled = ($missing.Count -eq 0)
+
+    if ($cfg.UPSCALER -eq 'dlss') {
+        if (-not $setup.dlss_ok) {
+            Show-Notice ('The DLSS folder ({0}) is missing nvngx_dlss.dll or nvngx.dll. Point Settings at the folder that holds them, or switch the upscaler back to the fork''s own.' -f $setup.dlss_dir)
+        } else {
+            Show-Notice 'DLSS is parked for now: the forced-upscaler path ends in a white window (an unimplemented console method). Switch the upscaler back to the fork''s own to play.'
+        }
+    } else {
+        Hide-Notice
+    }
+}
+
+function Update-PlayCard {
+    $set = Get-XenithPlaySet
+    $cfg = Get-XenithConfig
+    $which = 'Series S'
+    if ($set.series_x) { $which = 'Series X' }
+    $up = 'the fork''s own upscaler'
+    if ($cfg.UPSCALER) { $up = 'the DLSS proxy' }
+    $ui.CardRunTitle.Text = ('{0}, rendering at {1}p' -f $which, $cfg.RESOLUTION)
+    $ui.CardRunBody.Text = ('render scale {0}, {1}; the play set itself lives in xenith-core.ps1, mirrored from play-nvidia.ps1' -f $set.render_scale, $up)
+}
+
+function Update-Notes {
+    $rows = @()
+    try {
+        $raw = & git -C $repo log -20 --date=short --pretty=format:'%cs|%h|%s' 2>$null
+        if ($LASTEXITCODE -eq 0) { $rows = @($raw) }
+    } catch { $rows = @() }
+
+    $ui.NotesList.Children.Clear()
+    $first = $true
+    foreach ($row in $rows) {
+        $i1 = $row.IndexOf('|')
+        $i2 = $row.IndexOf('|', $i1 + 1)
+        if ($i1 -lt 1 -or $i2 -lt 0) { continue }
+        $date = $row.Substring(0, $i1)
+        $hash = $row.Substring($i1 + 1, $i2 - $i1 - 1)
+        $what = $row.Substring($i2 + 1)
+
+        $head = New-Object System.Windows.Controls.TextBlock
+        $run = New-Object System.Windows.Documents.Run
+        $run.Text = $hash
+        $run.Foreground = $script:BrushOk
+        $head.Inlines.Add($run) | Out-Null
+        $head.Inlines.Add(('   {0}' -f $date)) | Out-Null
+        $head.Opacity = 0.75
+        $head.FontSize = 12
+
+        $body = New-Object System.Windows.Controls.TextBlock
+        $body.Text = $what
+        $body.TextWrapping = 'Wrap'
+        $body.Margin = '0,2,0,0'
+
+        $stack = New-Object System.Windows.Controls.StackPanel
+        $stack.Children.Add($head) | Out-Null
+        $stack.Children.Add($body) | Out-Null
+
+        $border = New-Object System.Windows.Controls.Border
+        $border.BorderBrush = $script:Brushes.ConvertFromString('#25263D')
+        $border.BorderThickness = '0,0,0,1'
+        $border.Padding = '0,12'
+        $border.Child = $stack
+        $ui.NotesList.Children.Add($border) | Out-Null
+
+        if ($first) {
+            $ui.CardNotesTitle.Text = $what
+            $ui.CardNotesBody.Text = ('{0}   {1}' -f $date, $hash)
+            $first = $false
+        }
+    }
+    if ($first) {
+        $ui.CardNotesTitle.Text = 'No notes yet'
+        $ui.CardNotesBody.Text = ''
+    }
+}
+
+# --- starting, stopping, the log ---------------------------------------------
+
+function Set-Running {
+    param([bool]$On)
+    if ($On) {
+        $ui.BtnPlay.Visibility = 'Collapsed'
+        $ui.BtnStop.Visibility = 'Visible'
+    } else {
+        $ui.BtnStop.Visibility = 'Collapsed'
+        $ui.BtnPlay.Visibility = 'Visible'
+    }
+}
+
+function Start-Run {
+    try {
+        $run = Start-XenithRun
+        $script:RunId = [int]$run.pid
+        $script:RunLog = [string]$run.log
+        $script:LogKey = ''
+        $ui.LogPath.Text = $script:RunLog
+        $ui.LogBox.Text = ''
+        Set-Running $true
+        Set-View 'Console'
+        $timer.Start()
+        if ((Get-XenithConfig)['MINIMIZE'] -eq 'on') { $window.WindowState = 'Minimized' }
+    } catch {
+        Show-Notice $_.Exception.Message
+    }
+}
+
+function Stop-Run {
+    try { Stop-XenithRun -Id $script:RunId | Out-Null } catch { }
+    $script:RunId = 0
+    $timer.Stop()
+    Set-Running $false
+    Update-State
+}
+
+$timer = New-Object System.Windows.Threading.DispatcherTimer
+$timer.Interval = [TimeSpan]::FromSeconds(1)
+$timer.Add_Tick({
+    if ($script:RunId -gt 0) {
+        $alive = @(Get-Process -Id $script:RunId -ErrorAction SilentlyContinue).Count -gt 0
+        if (-not $alive) {
+            $script:RunId = 0
+            $timer.Stop()
+            Set-Running $false
+            Update-State
+            Show-Notice 'The run ended. Its whole log is saved next to the console path above.'
+            return
+        }
+    }
+    if ($script:RunLog) {
+        try {
+            $log = Get-XenithRunLog -Path $script:RunLog -Tail 120
+            $key = ''
+            if ($log.lines.Count -gt 0) { $key = ('{0}|{1}' -f $log.lines.Count, $log.lines[$log.lines.Count - 1]) }
+            if ($key -ne $script:LogKey) {
+                $script:LogKey = $key
+                $ui.LogBox.Text = ($log.lines -join "`r`n")
+                $ui.LogBox.CaretIndex = $ui.LogBox.Text.Length
+                $ui.LogBox.ScrollToEnd()
+            }
+        } catch { }
+    }
+})
+
+# --- the console view ---------------------------------------------------------
+
+function Save-RunLog {
+    $dlg = New-Object Microsoft.Win32.SaveFileDialog
+    $dlg.FileName = 'victory-run.log'
+    $dlg.Filter = 'Log files (*.log)|*.log|All files (*.*)|*.*'
+    if ($dlg.ShowDialog() -eq $true) {
+        try {
+            Save-XenithLog -Destination $dlg.FileName -Path $script:RunLog | Out-Null
+            $ui.SettingsMsg.Text = ''
+            Show-Notice ('The log is saved at {0}.' -f $dlg.FileName)
+        } catch {
+            Show-Notice $_.Exception.Message
+        }
+    }
+}
+
+# --- the settings view ---------------------------------------------------------
+
+function Update-SettingsUi {
+    $cfg = Get-XenithConfig
+    $ui.TxtGame.Text = [string]$cfg['GAME']
+    Select-ComboByTag $ui.CmbConsole ([string]$cfg['CONSOLE'])
+    Select-ComboByTag $ui.CmbRes ([string]$cfg['RESOLUTION'])
+    Select-ComboByTag $ui.CmbBuild ([string]$cfg['BUILD'])
+    Select-ComboByTag $ui.CmbUpscaler ([string]$cfg['UPSCALER'])
+    $ui.ChkQuality.IsChecked = ([string]$cfg['QUALITY'] -eq 'on')
+    $ui.ChkRay.IsChecked = ([string]$cfg['RAYTRACING'] -eq 'on')
+    $ui.ChkPreload.IsChecked = ([string]$cfg['PRELOAD'] -eq 'on')
+    $ui.ChkMinimize.IsChecked = ([string]$cfg['MINIMIZE'] -eq 'on')
+    $ui.TxtCache.Text = [string]$cfg['CACHE_DIR']
+    $ui.TxtSaves.Text = [string]$cfg['SAVES_DIR']
+    $ui.TxtDlss.Text = [string]$cfg['DLSS_DIR']
+    $ui.TxtLogDir.Text = [string]$cfg['LOG_DIR']
+    $want = [string]$cfg['ADAPTER']
+    if ($want -and $ui.CmbAdapter.Items.Contains($want)) { $ui.CmbAdapter.SelectedItem = $want }
+    $ui.SettingsMsg.Text = ''
+}
+
+function Save-Settings {
+    $patch = @{}
+    $patch['GAME'] = $ui.TxtGame.Text.Trim()
+    $patch['CONSOLE'] = Get-ComboTag $ui.CmbConsole
+    $patch['RESOLUTION'] = Get-ComboTag $ui.CmbRes
+    $patch['BUILD'] = Get-ComboTag $ui.CmbBuild
+    $patch['UPSCALER'] = Get-ComboTag $ui.CmbUpscaler
+    $patch['ADAPTER'] = [string]$ui.CmbAdapter.SelectedItem
+    $patch['QUALITY'] = ConvertTo-OnOff ([bool]$ui.ChkQuality.IsChecked)
+    $patch['RAYTRACING'] = ConvertTo-OnOff ([bool]$ui.ChkRay.IsChecked)
+    $patch['PRELOAD'] = ConvertTo-OnOff ([bool]$ui.ChkPreload.IsChecked)
+    $patch['MINIMIZE'] = ConvertTo-OnOff ([bool]$ui.ChkMinimize.IsChecked)
+    $patch['CACHE_DIR'] = $ui.TxtCache.Text.Trim()
+    $patch['SAVES_DIR'] = $ui.TxtSaves.Text.Trim()
+    $patch['DLSS_DIR'] = $ui.TxtDlss.Text.Trim()
+    $patch['LOG_DIR'] = $ui.TxtLogDir.Text.Trim()
+    try {
+        Set-XenithConfig -Setting $patch | Out-Null
+        $ui.SettingsMsg.Text = 'saved'
+        Update-State
+        Update-PlayCard
+    } catch {
+        $ui.SettingsMsg.Text = $_.Exception.Message
+    }
+}
+
+function Pick-GameExe {
+    $dlg = New-Object Microsoft.Win32.OpenFileDialog
+    $dlg.Filter = 'Game executables (*.exe)|*.exe|All files (*.*)|*.*'
+    if ($dlg.ShowDialog() -eq $true) { $ui.TxtGame.Text = $dlg.FileName }
+}
+
+function Pick-Folder {
+    param([System.Windows.Controls.TextBox]$Box)
+    $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+    if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $Box.Text = $dlg.SelectedPath }
+}
+
+function Open-Folder {
+    param([string]$Name)
+    try { Open-XenithFolder -Name $Name | Out-Null } catch { Show-Notice $_.Exception.Message }
+}
+
+# --- wire the window up ---------------------------------------------------------
+
+$ui.NavOverview.Add_Click({ Set-View 'Overview' })
+$ui.NavNotes.Add_Click({ Set-View 'Notes' })
+$ui.NavConsole.Add_Click({ Set-View 'Console' })
+$ui.NavWebsite.Add_Click({ Open-LocalPage 'docs\index.html' '' })
+$ui.BtnSettings.Add_Click({ Update-SettingsUi; Set-View 'Settings' })
+$ui.BtnBack.Add_Click({ Set-View 'Overview' })
+$ui.BtnPlay.Add_Click({ Start-Run })
+$ui.BtnStop.Add_Click({ Stop-Run })
+$ui.NoticeClose.Add_Click({ Hide-Notice })
+$ui.LinkAllNotes.Add_Click({ Set-View 'Notes' })
+$ui.CardNotes.Add_MouseLeftButtonUp({ Set-View 'Notes' })
+$ui.CardSetup.Add_MouseLeftButtonUp({ Update-SettingsUi; Set-View 'Settings' })
+$ui.CardRun.Add_MouseLeftButtonUp({ Update-SettingsUi; Set-View 'Settings' })
+$ui.BtnCommunity.Add_Click({ Start-Process $script:RepoUrl })
+
+$ui.BtnLogSave.Add_Click({ Save-RunLog })
+$ui.BtnLogCopy.Add_Click({
+    try { [Windows.Clipboard]::SetText($ui.LogBox.Text) } catch { Show-Notice $_.Exception.Message }
+})
+$ui.BtnLogFolder.Add_Click({ Open-Folder 'log' })
+
+$ui.BtnGameBrowse.Add_Click({ Pick-GameExe })
+$ui.BtnDetect.Add_Click({ Update-Adapters; $ui.SettingsMsg.Text = 'cards found again' })
+$ui.OpenCache.Add_Click({ Open-Folder 'cache' })
+$ui.OpenSaves.Add_Click({ Open-Folder 'saves' })
+$ui.OpenDlss.Add_Click({ Open-Folder 'dlss' })
+$ui.OpenLogDir.Add_Click({ Open-Folder 'log' })
+$ui.PickCache.Add_Click({ Pick-Folder $ui.TxtCache })
+$ui.PickSaves.Add_Click({ Pick-Folder $ui.TxtSaves })
+$ui.PickDlss.Add_Click({ Pick-Folder $ui.TxtDlss })
+$ui.PickLogDir.Add_Click({ Pick-Folder $ui.TxtLogDir })
+$ui.BtnSave.Add_Click({ Save-Settings })
+$ui.BtnRevert.Add_Click({ Update-SettingsUi })
+
+$ui.LinkSupport.Add_Click({ Open-LocalPage 'docs\index.html' 'troubleshooting' })
+$ui.LinkPolicy.Add_Click({ Open-LocalPage 'docs\asset-policy.md' '' })
+
+$window.Add_Closing({ $timer.Stop() })
+
+# --- first paint -----------------------------------------------------------------
+
+Set-View 'Overview'
+Update-Adapters
+Update-State
+Update-PlayCard
+Update-Notes
+$ui.FooterVer.Text = ('Xenith  |  xenith-core 1  |  commit {0}' -f (Get-Commit))
+try {
+    $latest = Get-XenithRunLog -Tail 1
+    if (-not $script:RunLog) { $ui.LogPath.Text = [string]$latest.path }
+} catch { }
+
+[void]$window.ShowDialog()
