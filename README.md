@@ -121,6 +121,12 @@ In short; the reasons and the measurements are in [docs/findings.md](docs/findin
   its upload ran, which also ended a device loss that came every 15 minutes or so.
 - **Boats float**: textures that shaders write and the title's CPU reads go back
   to title memory (from fxceless and Geckomacabre, on by default here).
+- **Taken from the RTX forks**: dynamic slots that answer the card's capped view
+  heap, the render-scale, upscaler and watchdog title patches, the ray-tracing
+  passes skipped for the known-hanging pipelines, ray walks that end at the root
+  when the structure builder is off, and constant buffer views of the sizes the
+  card takes. The switches and where each came from are in
+  [docs/rtx.md](docs/rtx.md).
 - **Frame record and replay** with per-pass times and shader variants compared
   turn by turn ([docs/replay.md](docs/replay.md)).
 
@@ -134,6 +140,12 @@ commits taken from elsewhere name the commit and its author.
   the shader recompiler.
 - **[fxceless/victory-fork](https://github.com/fxceless/victory-fork)**: the fork
   this one started from, and the people whose pull requests it carries.
+- **[trustno1-coder/VIctory-NVIDIA](https://github.com/trustno1-coder/VIctory-NVIDIA)**:
+  the RTX run this fork rides on (dynamic slots on a capped view heap, the title
+  patches, the ray-tracing skip list, the launchers); its commits are here with
+  their names kept.
+- **[soldsawn/victory-nvidia-8gb](https://github.com/soldsawn/victory-nvidia-8gb)**:
+  the constant view sizes (with fxceless PR #1206) and the clamps' waits.
 - **[DexNom/VIctory](https://github.com/DexNom/VIctory)**: ray tracing fixes,
   cube gradients, sparse textures.
 - **[Belobug/VIctory-Belobug-AMD](https://github.com/Belobug/VIctory-Belobug-AMD)**:
