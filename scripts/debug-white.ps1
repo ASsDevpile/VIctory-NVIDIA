@@ -55,7 +55,7 @@ if ($Purge) {
 $rtList = Join-Path $PSScriptRoot 'rt_off_hashes.txt'
 $skipPipelines = 'none'
 if (Test-Path $rtList) { $skipPipelines = (Get-Content $rtList -Raw).Trim() }
-else { Write-Host "no $rtList: the probes run without the RT skip list" }
+else { Write-Host "no ${rtList}: the probes run without the RT skip list" }
 
 $settings = @{
     VICTORY_TEXTURE_NO_WAIT   = '1'; VICTORY_RELAY              = '2'; VICTORY_CARD_STEPS        = '2'
