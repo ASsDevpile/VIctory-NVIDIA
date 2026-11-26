@@ -153,3 +153,56 @@ code (their lines differ from ours; habits copied, not code):
   (`modules/lifecycle.rs`, our own window procedure, key first). Their
   texture-queue room, DirectStorage staging and `slot_evict` deadlock fix
   stay unported, as before: the bug's shape is not in this tree.
+
+
+## Sweep of the fork network (the white-window round)
+
+Every fork's tip checked against the last sweep (upstream and the boards
+re-read the same day); three moved.
+
+- **trustno1-coder/VIctory-NVIDIA** (`033be27` -> `7480e96`, two GPU fixes
+  from jeremygold02's pull requests, both ported now):
+  - **The ambient depth binds only to a matching SRV** (`c05b44b`): the
+    stand-in for the indirect light took the depth view wherever it found
+    one, even for the Radiance and Air passes (which have no depth, so the
+    image stood in for it), and never checked the depth's size against the
+    image's. Now the depth is optional (`ambient.rs`), only the Resolve pass
+    binds it, only when its dimensions match the image's, and a missing or
+    mismatched depth stands the pass down with its own note in the log.
+  - **The buffer compare submits on its own** (`d1fe0bd`): the compare of
+    copies in the card's memory rode inside the submission's list batch. A
+    title list can leave a buffer promoted to COPY_DEST, and buffers decay
+    to COMMON between ExecuteCommandLists calls - so a compare inside a
+    later batch of the same submission could read a decayed buffer. It goes
+    in its own ExecuteCommandLists, just before the submission's fence
+    (`host.rs`, both the late and the timed paths). The `Timed::Compare`
+    timing kind went with it (the compare no longer rides the timed list
+    sequence; its card time was already in the compare's own query).
+- **fxceless/victory-fork** (`ceb9e1f` -> `58de9bf`): two commits. `a20809d`
+  is off-by-default diagnostics (card and page-mapping meters, a dump of the
+  console's native pipelines) on their fork line - a candidate if we ever
+  want the native-pipeline dump, not portable as a drive-by. `58de9bf` is
+  the mouth-move fix: 16-bit values through a table's typed views as they
+  are (their pull request 927), SDWA sign extension of 16-bit results
+  (upstream #3124), plus two off-by-default switches and 488 lines of their
+  valu tests. 2,446 insertions across 26 files of the shader lower - the
+  same lower ours grew from, but two years of drift deeper; parked until
+  someone can measure the mouths on a Windows machine, per the standing
+  rule.
+- **DoubleGhosty/cool_fox** (`f4b48ad` -> `caec503`, "leave the unused LOD
+  slot of an array texture query undefined"): already in this tree - the
+  level query takes no array slice and the unused coordinate slots stay
+  undefined (`emit/lower.rs`, the cube-sample block), carried on our line
+  under the name `read`.
+- **Marvisak/VIctory** (the upstream), **soldsawn/victory-nvidia-8gb**,
+  **GiovannaSGuerrera/Victory-RTX2080**,
+  **Dolberthi/neptune-dolberth-nvidia-8gb**: nothing new since the last
+  sweep.
+
+The probes ran this round too (`scripts/debug-white.ps1`): with the fork's
+own play set (no upscaler forced), the title presents frames steadily
+(~3,300 frames in a 120 s window, ~27 FPS on the RTX 3060) - the white
+window tracks the forced-upscaler path, and with the title's FSR in charge
+the run dies in seconds on an unimplemented command-queue method (slot
+`0xb8`), the same allocation-shape wall the DLSS round hit from the other
+side.

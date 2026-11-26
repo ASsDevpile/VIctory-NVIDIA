@@ -5916,11 +5916,14 @@ impl Host {
         for (shadow, at, bytes) in batch.placed.drain(..) {
             shadow.placed_copy(at, &bytes);
         }
-        if let Some(check) = card.as_ref().and_then(|c| c.check.clone()) {
-            #[cfg(feature = "diagnostics")]
-            marks.push((lists.len(), crate::copystat::Timed::Compare));
-            lists.push(Some(check));
-        }
+        // A title list can leave a buffer promoted to COPY_DEST. Buffers
+        // decay to COMMON between ExecuteCommandLists calls, so the compare
+        // goes in its own ExecuteCommandLists, just before the submission's
+        // fence, not inside the lists above.
+        let check = card
+            .as_ref()
+            .and_then(|c| c.check.clone())
+            .map(|list| [Some(list)]);
         #[cfg(feature = "diagnostics")]
         split.part(4);
         stage.next("submit: waiting for the heaps' records");
@@ -5962,6 +5965,9 @@ impl Host {
                     self.queue.ExecuteCommandLists(&lists[from..to]);
                     from = to;
                 }
+                if let Some(check) = &check {
+                    self.queue.ExecuteCommandLists(check);
+                }
                 self.queue.Signal(&self.fence, *submitted)
             };
             awake::sent(&self.device);
@@ -5998,8 +6004,7 @@ impl Host {
         // Diagnostics: each list on its own, timed (`VICTORY_GPU_TIMING`).
         #[cfg(feature = "diagnostics")]
         // (Each list on its own: a run's prelude, which brings its copies up
-        // to date, apart from the run's commands; the compare apart from the
-        // last run.)
+        // to date, apart from the run's commands.)
         let groups: Vec<(&[Option<ID3D12CommandList>], crate::copystat::Timed)> = if timing() {
             marks
                 .iter()
@@ -6013,12 +6018,17 @@ impl Host {
         #[cfg(not(feature = "diagnostics"))]
         let groups = [(&lists[..], ())];
         submitting(2, runs.len());
-        for (_i, &(group, _kind)) in groups.iter().enumerate() {
+        for (i, &(group, _kind)) in groups.iter().enumerate() {
             *submitted += 1;
             let started = std::time::Instant::now();
             // SAFETY: closed lists; the fence and event are ours.
             unsafe {
                 self.queue.ExecuteCommandLists(group);
+                if i + 1 == groups.len()
+                    && let Some(check) = &check
+                {
+                    self.queue.ExecuteCommandLists(check);
+                }
                 self.card_sent();
                 let waited = self
                     .queue
@@ -6038,8 +6048,7 @@ impl Host {
                     Err(e) => tracing::warn!(error = %e, "host submission not waited for"),
                 }
             }
-            // With timing on each group is one of `runs` (and the compare
-            // of copies in the card's memory, with the last): every
+            // With timing on each group is one of `runs`: every
             // command's time on the card goes to the sums by pipeline.
             // The list's time from its sending to the card's signal, by what
             // it is, and of a run's the part its noted commands account for.

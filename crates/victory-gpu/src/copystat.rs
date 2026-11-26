@@ -225,8 +225,6 @@ pub(crate) enum Timed {
     Title(usize),
     /// Ours in front of the lists, the steps done on the card.
     Steps,
-    /// The compare of copies in the card's memory, behind the lists.
-    Compare,
     /// Another of ours (the timeline's stamps).
     Other,
 }
@@ -237,8 +235,7 @@ impl Timed {
             Timed::Prelude => 0,
             Timed::Title(_) => 1,
             Timed::Steps => 2,
-            Timed::Compare => 3,
-            Timed::Other => 4,
+            Timed::Other => 3,
         }
     }
 }
@@ -247,7 +244,7 @@ impl Timed {
 /// microseconds from sending to the card's signal, and the microseconds of
 /// the commands noted in them; then the least time of any list (what a
 /// submission of nothing costs, about).
-static LISTS_TIMED: Mutex<([[u64; 3]; 5], u64)> = Mutex::new(([[0; 3]; 5], u64::MAX));
+static LISTS_TIMED: Mutex<([[u64; 3]; 4], u64)> = Mutex::new(([[0; 3]; 4], u64::MAX));
 
 /// A list of kind `kind` took `wall` microseconds from its sending to the
 /// card's signal, `noted` of them in its noted commands (timing run).
@@ -1433,18 +1430,18 @@ pub(crate) fn log(frames: f64) {
     }
     // The lists of a timing run by kind: the title's, what of their time
     // their commands account for, and ours.
-    let (timed, least) = std::mem::replace(&mut *LISTS_TIMED.lock().unwrap_or_else(|e| e.into_inner()), ([[0; 3]; 5], u64::MAX));
+    let (timed, least) = std::mem::replace(&mut *LISTS_TIMED.lock().unwrap_or_else(|e| e.into_inner()), ([[0; 3]; 4], u64::MAX));
     if timed.iter().any(|t| t[0] > 0) {
         let per = |us: u64| us as f64 / 1e3 / frames;
         let n = |c: u64| c as f64 / frames;
         let all: u64 = timed.iter().map(|t| t[1]).sum();
         let lists: u64 = timed.iter().map(|t| t[0]).sum();
-        let [prelude, title, steps, compare, other] = timed;
+        let [prelude, title, steps, other] = timed;
         tracing::info!(
             "  the card's time by list (timing run), per frame, from sending to the signal: {:.1} ms in {:.0} lists; the \
              title's {:.1} ms in {:.0} (their noted commands {:.1}, the rest {:.1}: what of ours is recorded among them, \
              barriers, and the sending); preludes {:.1} ms in {:.0} (refreshes of copies); steps on the card {:.1} ms in \
-             {:.0}; compares of copies in the card's memory {:.1} ms in {:.0}; others of ours {:.1} ms in {:.0}; the least \
+             {:.0}; others of ours {:.1} ms in {:.0}; the least \
              a list took {:.0} us ({:.1} ms a frame at that for every list)",
             per(all),
             n(lists),
@@ -1456,8 +1453,6 @@ pub(crate) fn log(frames: f64) {
             n(prelude[0]),
             per(steps[1]),
             n(steps[0]),
-            per(compare[1]),
-            n(compare[0]),
             per(other[1]),
             n(other[0]),
             if least == u64::MAX { 0 } else { least },
