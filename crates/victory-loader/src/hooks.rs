@@ -70,6 +70,11 @@ pub(crate) const RENDER_SCALE_ENV: &str = "VICTORY_RENDER_SCALE";
 /// Environment variable that makes the title use its own temporal upscaler
 /// on every console profile (Series S otherwise picks FSR).
 pub(crate) const OWN_UPSCALER_ENV: &str = "VICTORY_OWN_UPSCALER";
+/// Environment variable that forces the title's FSR path (`fsr`, or `dlss`
+/// as the launcher's alias): a DLSS proxy in the title's folder speaks FSR
+/// to the title and DLSS to the driver, and only works while FSR runs. It
+/// wins over [`OWN_UPSCALER_ENV`].
+pub(crate) const UPSCALER_ENV: &str = "VICTORY_UPSCALER";
 
 /// A patch whose bytes are computed at load time.
 struct OwnedPatch {
@@ -156,6 +161,29 @@ fn parse_scale(text: &str) -> Option<f32> {
     (0.2..=1.0).contains(&v).then_some(v)
 }
 
+/// Whether an NVIDIA NGX library sits beside the title's executable (the
+/// loader runs in the title's process). A DLSS setup needs one: the proxy
+/// that takes the title's FSR calls loads it.
+fn ngx_present() -> bool {
+    match std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|p| p.to_path_buf()))
+    {
+        Some(dir) => std::fs::read_dir(dir)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .any(|e| {
+                let name = e.file_name();
+                let name = name.to_string_lossy();
+                name.len() > 4
+                    && name.rsplit('.').next() == Some("dll")
+                    && name.to_ascii_lowercase().starts_with("nvngx")
+            }),
+        None => false,
+    }
+}
+
 /// Applies the resolution levers asked for in the environment
 /// ([`RENDER_SCALE_ENV`], [`OWN_UPSCALER_ENV`]). Returns how many applied.
 ///
@@ -163,8 +191,17 @@ fn parse_scale(text: &str) -> Option<f32> {
 /// As `disarm_watchdog`.
 pub(crate) unsafe fn resolution_levers(base: usize, hash: &blake3::Hash) -> usize {
     let scale = std::env::var(RENDER_SCALE_ENV).ok();
-    let own = std::env::var_os(OWN_UPSCALER_ENV).is_some_and(|v| v != "0");
-    if scale.is_none() && !own {
+    let upscaler = std::env::var(UPSCALER_ENV)
+        .ok()
+        .map(|v| v.trim().to_ascii_lowercase());
+    let fsr_forced = matches!(upscaler.as_deref(), Some("fsr") | Some("dlss"));
+    if fsr_forced && std::env::var_os(OWN_UPSCALER_ENV).is_some_and(|v| v != "0") {
+        tracing::info!(
+            "{UPSCALER_ENV} runs the title's FSR path; {OWN_UPSCALER_ENV} is left aside"
+        );
+    }
+    let own = !fsr_forced && std::env::var_os(OWN_UPSCALER_ENV).is_some_and(|v| v != "0");
+    if scale.is_none() && !own && !fsr_forced {
         return 0;
     }
     // Every image the loader maps comes here (the title's DLLs too); only
@@ -174,6 +211,18 @@ pub(crate) unsafe fn resolution_levers(base: usize, hash: &blake3::Hash) -> usiz
         return 0;
     }
     let mut applied = 0;
+    if upscaler.as_deref() == Some("dlss") {
+        let here = ngx_present();
+        tracing::info!(
+            found = here,
+            "DLSS: a proxy DLL beside the title speaks FSR to it and DLSS to the driver ({UPSCALER_ENV}=dlss); {}",
+            if here {
+                "an NGX library is beside the title"
+            } else {
+                "no NGX library found beside the title (a missing one leaves FSR as it is)"
+            }
+        );
+    }
     if own {
         // SAFETY: forwarded from this function's contract.
         applied += usize::from(unsafe { apply(base, &OWN_UPSCALER) });
@@ -181,8 +230,9 @@ pub(crate) unsafe fn resolution_levers(base: usize, hash: &blake3::Hash) -> usiz
     if let Some(text) = scale {
         match parse_scale(&text) {
             Some(scale) => {
-                // With the own upscaler forced, FSR is left as it is.
-                for p in render_scale_patches(base, scale, !own) {
+                // With the own upscaler forced, FSR is left as it is; in its
+                // place `VICTORY_UPSCALER` runs FSR itself.
+                for p in render_scale_patches(base, scale, fsr_forced || !own) {
                     let p = Patch {
                         what: p.what,
                         rva: p.rva,
@@ -206,7 +256,10 @@ unsafe fn apply(base: usize, p: &Patch<'_>) -> bool {
     // SAFETY: the offset is inside the mapped .text of this exact build.
     let now = unsafe { std::slice::from_raw_parts(at, p.expect.len()) };
     if now != p.expect || p.new.len() != p.expect.len() {
-        tracing::warn!(what = p.what, "hook skipped: the bytes are not the expected ones");
+        tracing::warn!(
+            what = p.what,
+            "hook skipped: the bytes are not the expected ones"
+        );
         return false;
     }
     let mut old = 0;
@@ -255,4 +308,3 @@ mod tests {
         assert_eq!(render_scale_patches(0, 0.5, false).len(), 2);
     }
 }
-
