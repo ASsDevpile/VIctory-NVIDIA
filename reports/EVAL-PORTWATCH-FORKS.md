@@ -134,3 +134,22 @@ the standing forks unchanged. Both trackers re-read the same day
   (`trustno1-coder/VIctory-NVIDIA`, the source of our line) sits at 29 %,
   ranked tenth on gta6recomp. PortWatch's Nov 26 note says the original
   codec-d/cool_fox went 404 again - the mirrors hold the code.
+
+
+## The watchlist, taken
+
+The two habits the last sweep left on the watchlist are in, each in our own
+code (their lines differ from ours; habits copied, not code):
+
+- **The measurement habit (GiovannaSGuerrera/Victory-RTX2080)**:
+  `scripts/capture-usage.ps1` samples the machine and the run once a second
+  into a CSV (CPU, RAM, the card's utilization and memory, the run's own CPU
+  and RAM), from CIM's formatted counters so the numbers read the same on a
+  Windows of any language. A frame-time claim can now carry its usage line.
+  Their `heap_pass.rs` lines stay unported, as before.
+- **The borderless toggle (Dolberthi/neptune-dolberth-nvidia-8gb)**: F11 or
+  Alt+Enter takes the title window's rims off and fills the screen's work
+  area; again brings the rimmed window and its place back
+  (`modules/lifecycle.rs`, our own window procedure, key first). Their
+  texture-queue room, DirectStorage staging and `slot_evict` deadlock fix
+  stay unported, as before: the bug's shape is not in this tree.

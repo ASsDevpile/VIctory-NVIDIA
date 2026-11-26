@@ -15,6 +15,9 @@ use std::time::Duration;
 
 use windows_sys::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows_sys::Win32::System::Threading::{GetCurrentProcess, TerminateProcess};
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
+    GetAsyncKeyState, VK_F11, VK_MENU, VK_RETURN,
+};
 use windows_sys::Win32::UI::WindowsAndMessaging::{self as wm, HMENU};
 use windows_sys::core::{PCSTR, PCWSTR, w};
 
@@ -95,6 +98,15 @@ pub extern "system" fn UnregisterAppConstrainedChangeNotification(registration: 
 
 /// The window procedure a title window had before ours.
 const TITLE_PROC: PCWSTR = w!("victory.wndproc");
+/// The rimmed window's saved style and place, kept while the window is
+/// borderless (see [`toggle_borderless`]).
+const SAVED_WINDOW: PCWSTR = w!("victory.borderless.back");
+
+/// A rimmed title window kept for the way back out of borderless.
+struct SavedWindow {
+    style: u32,
+    place: RECT,
+}
 
 pub extern "system" fn CreateWindowExW(
     ex_style: u32,
@@ -261,6 +273,14 @@ extern "system" fn window_proc(
     if message == wm::WM_SYSCOMMAND && wparam & 0xFFF0 == wm::SC_KEYMENU as usize {
         return 0;
     }
+    // F11 or Alt+Enter: the borderless toggle (taken from the watchlist's
+    // neptune line, as a habit, in our own window code). The key is ours and
+    // not passed on: the title never sees it.
+    if (message == wm::WM_KEYDOWN || message == wm::WM_SYSKEYDOWN)
+        && toggle_borderless(hwnd, wparam, message == wm::WM_SYSKEYDOWN)
+    {
+        return 0;
+    }
     // SAFETY: the procedure `hook` stored, called the way the system would.
     unsafe {
         let title = wm::GetPropW(hwnd, TITLE_PROC);
@@ -269,6 +289,91 @@ extern "system" fn window_proc(
         }
         let title = std::mem::transmute::<*mut c_void, wm::WNDPROC>(title);
         wm::CallWindowProcW(title, hwnd, message, wparam, lparam)
+    }
+}
+
+/// F11, or Enter with Alt held (hold-alt makes the system send
+/// `WM_SYSKEYDOWN`). Returns which.
+fn borderless_key(key: WPARAM, alt_may_be_down: bool) -> bool {
+    if key == usize::from(VK_F11) {
+        return true;
+    }
+    if !alt_may_be_down || key != usize::from(VK_RETURN) {
+        return false;
+    }
+    // SAFETY: a plain query.
+    (unsafe { GetAsyncKeyState(i32::from(VK_MENU)) }) < 0
+}
+
+/// The borderless toggle, on the title's window: F11 or Alt+Enter takes the
+/// rims off and fills the screen's work area; again brings the rimmed window
+/// and its old place back. The saved style and place are kept on the window
+/// itself ([`SAVED_WINDOW`]), so two windows each keep their own way back, and
+/// a run that dies borderless loses only the memory of a place. Child windows
+/// (a console-mode title's) are left alone. Returns whether the key was
+/// toggled and should not reach the title.
+fn toggle_borderless(hwnd: HWND, key: WPARAM, alt_may_be_down: bool) -> bool {
+    if !borderless_key(key, alt_may_be_down) {
+        return false;
+    }
+    // SAFETY: styles, places and properties of this very window, which the
+    // window procedure owns the thread of. The saved box is reclaimed in the
+    // same toggle that reads it.
+    unsafe {
+        let style = u32::try_from(wm::GetWindowLongPtrW(hwnd, wm::GWL_STYLE)).unwrap_or(0);
+        if style & wm::WS_CHILD != 0 {
+            return false;
+        }
+        let saved = wm::GetPropW(hwnd, SAVED_WINDOW).cast::<SavedWindow>();
+        if saved.is_null() {
+            // to borderless: the rims off, the work area filled
+            let mut place = RECT::default();
+            if wm::GetWindowRect(hwnd, &mut place) == 0 {
+                return false;
+            }
+            wm::SetPropW(
+                hwnd,
+                SAVED_WINDOW,
+                Box::into_raw(Box::new(SavedWindow { style, place })).cast(),
+            );
+            let mut area = RECT::default();
+            let known =
+                wm::SystemParametersInfoW(wm::SPI_GETWORKAREA, 0, (&raw mut area).cast(), 0);
+            if known == 0 {
+                return false;
+            }
+            let bare = (style & !wm::WS_OVERLAPPEDWINDOW) | wm::WS_POPUP;
+            wm::SetWindowLongPtrW(hwnd, wm::GWL_STYLE, bare as isize);
+            wm::SetWindowPos(
+                hwnd,
+                std::ptr::null_mut(),
+                area.left,
+                area.top,
+                area.right - area.left,
+                area.bottom - area.top,
+                wm::SWP_NOZORDER | wm::SWP_NOOWNERZORDER | wm::SWP_FRAMECHANGED,
+            );
+            tracing::info!(
+                style = bare,
+                "title window borderless (F11 or Alt+Enter toggles it back)"
+            );
+        } else {
+            // back to the rimmed window and its old place
+            wm::RemovePropW(hwnd, SAVED_WINDOW);
+            let saved = Box::from_raw(saved);
+            wm::SetWindowLongPtrW(hwnd, wm::GWL_STYLE, isize::from(saved.style));
+            wm::SetWindowPos(
+                hwnd,
+                std::ptr::null_mut(),
+                saved.place.left,
+                saved.place.top,
+                saved.place.right - saved.place.left,
+                saved.place.bottom - saved.place.top,
+                wm::SWP_NOZORDER | wm::SWP_NOOWNERZORDER | wm::SWP_FRAMECHANGED,
+            );
+            tracing::info!(style = saved.style, "title window rimmed again");
+        }
+        true
     }
 }
 
