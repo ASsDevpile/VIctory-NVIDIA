@@ -27,6 +27,7 @@ $script:XenithDefaults = @{
     DLSS_DIR    = ''
     LOG_DIR     = ''
     LOG_LEVEL   = 'info'
+    WINDOWS_BAR_MB = ''
 }
 
 function Get-XenithRepo {
@@ -139,6 +140,14 @@ function Get-XenithPlaySet {
     if ($cfg.ADAPTER) { $settings.VICTORY_D3D12_ADAPTER = $cfg.ADAPTER }
     if ($cfg.CACHE_DIR) { $settings.VICTORY_CACHE_DIR = $cfg.CACHE_DIR }
     if ($cfg.SAVES_DIR) { $settings.VICTORY_SAVES_DIR = $cfg.SAVES_DIR }
+    if ($cfg.WINDOWS_BAR_MB) {
+        $settings.VICTORY_WINDOWS_BAR_MB = $cfg.WINDOWS_BAR_MB
+    } else {
+        $ram = try { (Get-CimInstance Win32_ComputerSystem -ErrorAction Stop).TotalPhysicalMemory } catch { 0 }
+        if ($ram -gt 0 -and $ram -lt 24GB) {
+            $settings.VICTORY_WINDOWS_BAR_MB = '3072'
+        }
+    }
     [pscustomobject]@{
         settings = $settings
         exe      = (Get-XenithVictoryExe -Build $cfg.BUILD)
