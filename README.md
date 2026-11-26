@@ -82,9 +82,11 @@ Or use the launcher: `xenith.cmd` (a menu; a special copy of the
 [Xenith VI](https://github.com/ASsDevpile/XenithVI) launcher, changed for
 this fork) or its window, `xenith-ui.cmd`. Both keep their settings in
 `xenith.ini` (title path, render height, the card named, quality, the
-pipeline skip list) and start through `scripts\play-nvidia.ps1`. The
-project's website is [docs/index.html](docs/index.html) (GitHub Pages serves
-it from `docs/`).
+pipeline skip list) and start through `scripts\play-nvidia.ps1`. The card is
+found for you (the fastest is picked by default; the window names yours and
+lets you pick another), and the upscaler row is where DLSS will land once its
+integration is in. The project's website is
+[docs/index.html](docs/index.html) (GitHub Pages serves it from `docs/`).
 
 `scripts\play.ps1 -Safe` leaves out the newest, faster ways; try it first when
 something is wrong. `-RayTracing` turns the title's ray-traced indirect light on.

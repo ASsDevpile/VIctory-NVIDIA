@@ -17,7 +17,10 @@ set "QUALITY=on"
 set "RAYTRACING=off"
 set "BUILD=diag"
 set "SKIP="
+set "NVIDIA_CARD="
+set "EXTRA_ADVICE="
 if exist "xenith.ini" for /f "usebackq tokens=1,* delims==" %%a in ("xenith.ini") do set "%%a=%%b"
+for /f "delims=" %%c in ('powershell -NoProfile -Command "Get-CimInstance Win32_VideoController | ForEach-Object { $_.Name }" 2^>nul') do call :found_card "%%c"
 
 if not defined GAME (
     echo No title configured yet.
@@ -38,6 +41,7 @@ if not exist "%SCRIPT%" (
 echo.
 echo XENITH VI - RTX   build %BUILD%
 echo title             %GAME%
+if defined NVIDIA_CARD (echo card              %NVIDIA_CARD%) else echo card              no NVIDIA card found (the run still picks the fastest)
 if defined RESOLUTION echo render height    %RESOLUTION%
 if defined ADAPTER echo adapter           %ADAPTER%
 echo quality %QUALITY%   ray tracing %RAYTRACING%
@@ -95,7 +99,7 @@ echo Settings (empty values mean the launch script's defaults)
 echo.
 echo    1  Game path        %GAME%
 echo    2  Render height    %RESOLUTION%  (2160, 1440, 1080, 720, 540, 480)
-echo    3  Adapter          %ADAPTER%  (name part or index; empty: the fastest card)
+echo    3  Adapter          %ADAPTER%  (empty: the fastest%EXTRA_ADVICE%)
 echo    4  Quality          %QUALITY%  (fewer stretched bodies, rainbow skin)
 echo    5  Ray tracing      %RAYTRACING%
 echo    6  Build            %BUILD%  (diag or release)
@@ -108,12 +112,16 @@ if not defined WHICH set "WHICH=0"
 if "%WHICH%"=="0" goto menu
 if "%WHICH%"=="1" call :ask GAME "1 Path to the title's game_*.exe"
 if "%WHICH%"=="2" call :ask RESOLUTION "2 Render height (2160 1440 1080 720 540 480, empty: half the output)"
-if "%WHICH%"=="3" call :ask ADAPTER "3 Adapter (name part like 5070, or index like 1; empty: the fastest)"
+if "%WHICH%"=="3" call :ask ADAPTER "3 Adapter (name part like 5070, or index like 1; empty: the fastest%EXTRA_ADVICE%)"
 if "%WHICH%"=="4" call :ask QUALITY "4 Quality patches on or off"
 if "%WHICH%"=="5" call :ask RAYTRACING "5 Ray tracing on or off"
 if "%WHICH%"=="6" call :ask BUILD "6 Build (diag or release)"
 if "%WHICH%"=="7" call :ask SKIP "7 Pipelines to skip, comma-separated hashes"
 goto settings
+
+:found_card
+if not defined NVIDIA_CARD echo %~1| findstr /i "nvidia geforce rtx gtx" >nul && set "NVIDIA_CARD=%~1" && set "EXTRA_ADVICE=; found: %~1"
+exit /b 0
 
 :ask
 set "CURRENT="
