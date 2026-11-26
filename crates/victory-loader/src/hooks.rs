@@ -160,6 +160,19 @@ fn render_scale_patches(base: usize, scale: f32, fsr: bool) -> Vec<OwnedPatch> {
     patches
 }
 
+/// Whether the title's FSR has a constant for this scale.
+fn has_fsr_scale(scale: f32) -> bool {
+    FSR_SCALES.iter().any(|(v, _)| (v - scale).abs() < 1e-3)
+}
+
+/// The nearest of the FSR's own scale constants.
+fn nearest_fsr_scale(scale: f32) -> f32 {
+    FSR_SCALES
+        .iter()
+        .min_by(|a, b| (a.0 - scale).abs().total_cmp(&(b.0 - scale).abs()))
+        .map_or(scale, |(v, _)| *v)
+}
+
 /// The scale `VICTORY_RENDER_SCALE` asks for, if valid.
 fn parse_scale(text: &str) -> Option<f32> {
     let v: f32 = text.trim().parse().ok()?;
@@ -239,8 +252,28 @@ pub(crate) unsafe fn resolution_levers(base: usize, hash: &blake3::Hash) -> usiz
         match parse_scale(&text) {
             Some(scale) => {
                 // With the own upscaler forced, FSR is left as it is; in its
-                // place `VICTORY_UPSCALER` runs FSR itself.
-                for p in render_scale_patches(base, scale, fsr_forced || !own) {
+                // place `VICTORY_UPSCALER` runs FSR itself. In that mode the
+                // title's FSR takes its scale from one of the title's own
+                // constants: an asked scale none of them matches is snapped
+                // to the nearest, or the FSR reads its default 2/3 while the
+                // picture is rendered at the asked scale — sizes nobody
+                // agreed on, and the presented frame stays blank (a 720p ask
+                // on a 1080p output, scale 0.6667, was the white window). The
+                // own upscaler, which takes any scale, is set aside in just
+                // this mode; with it in charge the asked scale stands.
+                let fsr = fsr_forced || !own;
+                let scale = if fsr && !has_fsr_scale(scale) {
+                    let snapped = nearest_fsr_scale(scale);
+                    tracing::warn!(
+                        asked = scale,
+                        snapped,
+                        "{UPSCALER_ENV} leaves the title's FSR in charge and it has no constant for this scale; snapped to the nearest one it has"
+                    );
+                    snapped
+                } else {
+                    scale
+                };
+                for p in render_scale_patches(base, scale, fsr) {
                     let p = Patch {
                         what: p.what,
                         rva: p.rva,
@@ -314,5 +347,23 @@ mod tests {
     fn odd_scales_patch_only_the_own_upscaler() {
         assert_eq!(render_scale_patches(0, 0.6, true).len(), 2);
         assert_eq!(render_scale_patches(0, 0.5, false).len(), 2);
+    }
+
+    #[test]
+    fn fsr_scale_knowledge_and_snapping() {
+        assert!(has_fsr_scale(0.5));
+        assert!(has_fsr_scale(0.4));
+        assert!(has_fsr_scale(1.0 / 3.0));
+        assert!(has_fsr_scale(0.75));
+        assert!(!has_fsr_scale(0.6667));
+        assert!(!has_fsr_scale(1.0));
+        // 720p on a 1080p output (0.6667) snaps to 0.75, and a 1.0 ask down
+        // to 0.75; a known constant is kept as it is.
+        assert!((nearest_fsr_scale(0.6667) - 0.75).abs() < 1e-3);
+        assert!((nearest_fsr_scale(1.0) - 0.75).abs() < 1e-3);
+        assert!((nearest_fsr_scale(0.66) - 0.75).abs() < 1e-3);
+        assert!((nearest_fsr_scale(0.62) - 0.5).abs() < 1e-3);
+        assert!((nearest_fsr_scale(0.4445) - 0.4).abs() < 1e-3);
+        assert!((nearest_fsr_scale(0.5) - 0.5).abs() < 1e-3);
     }
 }
