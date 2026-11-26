@@ -265,3 +265,33 @@ interesting:
   steps.
 - soldsawn's `VICTORY_TEXTURE_DROP_MIPS=2`: the 8 GB VRAM fit lever; only
   matters if the card spills (the 3060's 12 GB probably does not).
+
+## The morning after port 5: the network's new tips, and what of them is ours already
+
+The tips that moved since the last sweep (tracker names): trustno1-coder
+`0ef2b99` -> `02a47cd`, cool_fox `c3e5c37` -> `ab113ff`, fxceless
+`93db653` -> `e4245f3`. The rest held still (avatarmanz `c9c932c`,
+rorodev6 `8604369`, Marvisak `63bcca4`, soldsawn `c09a44e`).
+
+- **Port 5 measured**: 1 -> 5-8 FPS on the 3060 (the reporter's words: a
+  500-800% improvement), and smooth.
+- **fxceless's big squashed commit** (`e4245f3`): the headline win,
+  `VICTORY_CARD_HASH_WIDE` (-10 ms of card a frame on a 4070), is the wide
+  hash form this tree already carries - our `CARD_COMPARE` is one group of
+  64 threads a piece with an eight-unrolled load loop (after fork #1014 and
+  cool_fox `641835a4`); their -10 ms was the narrow -> wide step we made
+  long ago. `VICTORY_GATHER_SEGMENTS` measured neutral on their side.
+- **Ported from it**: upstream #3198 (a texture the card had no room for
+  waits a second and is asked again on a later use, instead of staying
+  without a host copy the whole run - the missing-texture and black-surface
+  class) and fork #589 (a dropped descriptor heap's run of title-memory
+  views is forgotten, so a heap made later at the same address does not
+  find stale views). Both self-contained; the rest of the commit (4 KiB
+  dirty tracking, the made-due-again recheck, the translator fixes of
+  #646/#1002/#1112 and `VICTORY_WAVE_WIDE_ONLY`) is entangled with their
+  write-watch journal and translator refactor - on the shelf until a
+  Windows measurement machine takes it piece by piece.
+- **trustno1-coder's diagnostics commit** (`b8fcd99`, descriptor view-table
+  usage by kind): probe-grade, no speed; parked.
+- **cool_fox's two port-1 commits**: already this tree's port 1, address
+  order included (`xmem.rs` carries the same slices-in-address-order run).
