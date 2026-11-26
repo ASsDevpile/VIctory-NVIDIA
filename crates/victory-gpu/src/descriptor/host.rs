@@ -3109,7 +3109,7 @@ impl HostHeap {
         let Some(host) = host() else { return };
         let desc = D3D12_CONSTANT_BUFFER_VIEW_DESC {
             BufferLocation: gpu,
-            SizeInBytes: constant_bytes(size),
+            SizeInBytes: constant_view_size(size),
         };
         // SAFETY: a slot of our heap; the memory is the caller's.
         unsafe {
@@ -4306,13 +4306,27 @@ fn twin_uav(
     Some(desc)
 }
 
-/// The bytes of the host's constant buffer view for a title's of `size`:
-/// whole 256s, and at most the 64 KiB a shader can index. The host removes
-/// the device for a larger view, and the title's heap holds such sizes in
-/// slots it does not use.
-fn constant_bytes(size: u32) -> u32 {
-    const LARGEST: u32 = 64 << 10;
-    size.min(LARGEST).next_multiple_of(256)
+/// The size of a constant buffer view the host takes: 256-byte steps, and
+/// at most 4,096 vectors (65,536 bytes, `D3D12_REQ_CONSTANT_BUFFER_ELEMENT_COUNT`).
+/// The title names constant views of more (one of 1,306,368 bytes, in the
+/// world); `CreateConstantBufferView` with such a size is an invalid call,
+/// and NVIDIA removes the device for it (`DXGI_ERROR_INVALID_CALL`), in
+/// the frame the view is made. A shader reads at most 4,096 vectors through
+/// a constant view, so nothing it can read is lost.
+fn constant_view_size(size: u32) -> u32 {
+    const MOST: u32 = 4096 * 16;
+    // The cap before the rounding (fork pull request #1206): a size within
+    // 255 of the largest number would round past it, to 0 in a release
+    // build, and a view of no bytes be made with no line said.
+    if size > MOST {
+        once!(size, "a constant buffer view over 64 KiB, made 64 KiB (the host takes no more)");
+        return MOST;
+    }
+    // A view of no bytes stays one: a shader reads zeros through it, as on the
+    // console. Rounded up from 1 it became 256 bytes of whatever lies at its
+    // address in the host copy (the ring of per-draw constants among it), other
+    // bytes every frame: a floor in the first rooms flickered.
+    size.next_multiple_of(256)
 }
 
 /// Makes the host descriptor for `view` at `at`: the host resource it
@@ -4344,7 +4358,7 @@ fn make_twinned(
             }
             let desc = D3D12_CONSTANT_BUFFER_VIEW_DESC {
                 BufferLocation: gpu,
-                SizeInBytes: constant_bytes(size),
+                SizeInBytes: constant_view_size(size),
             };
             // SAFETY: slots of our heap; the range lies in the host copy.
             unsafe {
@@ -5427,6 +5441,22 @@ void BY_FLOATS_OR_NOT(uint3 id : SV_DispatchThreadID) {
         );
     }
 
+    /// A constant view is made in 256-byte steps and at most 64 KiB, the
+    /// most the host takes (a larger size removes the device on NVIDIA);
+    /// a view of no bytes stays one.
+    #[test]
+    fn constant_views_are_at_most_64_kib() {
+        assert_eq!(constant_view_size(0), 0);
+        assert_eq!(constant_view_size(1), 256);
+        assert_eq!(constant_view_size(16), 256);
+        assert_eq!(constant_view_size(256), 256);
+        assert_eq!(constant_view_size(65_536), 65_536);
+        assert_eq!(constant_view_size(1_306_368), 65_536);
+        assert_eq!(constant_view_size(65_537), 65_536);
+        assert_eq!(constant_view_size(u32::MAX), 65_536);
+        assert_eq!(constant_view_size(u32::MAX - 100), 65_536);
+    }
+
     /// A null texture UAV keeps the title's dimension (3D for the world's
     /// wind field), and is 2D when the title names none.
     #[test]
@@ -5601,9 +5631,9 @@ void BY_FLOATS_OR_NOT(uint3 id : SV_DispatchThreadID) {
         // SAFETY: a live upload buffer.
         heap.constant_at(1, &buffer, unsafe { buffer.GetGPUVirtualAddress() }, 969_472);
         assert!(alive(), "a view of the list's own memory");
-        assert_eq!(constant_bytes(480), 512);
-        assert_eq!(constant_bytes(64 << 10), 64 << 10);
-        assert_eq!(constant_bytes(u32::MAX), 64 << 10);
+        assert_eq!(constant_view_size(480), 512);
+        assert_eq!(constant_view_size(64 << 10), 64 << 10);
+        assert_eq!(constant_view_size(u32::MAX), 64 << 10);
     }
 
     /// A null 3D UAV made on the real device leaves it alive.
