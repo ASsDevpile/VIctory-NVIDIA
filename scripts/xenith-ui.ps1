@@ -47,15 +47,10 @@ function Hide-Notice {
 function Set-View {
     param([string]$Name)
     foreach ($v in @('Overview', 'Notes', 'Console', 'Settings')) {
-        $view = $ui[('View' + $v)]
-        $nav = $ui[('Nav' + $v)]
-        if ($v -eq $Name) {
-            $view.Visibility = 'Visible'
-            $nav.Tag = 'active'
-        } else {
-            $view.Visibility = 'Collapsed'
-            $nav.Tag = ''
-        }
+        if ($v -eq $Name) { $ui[('View' + $v)].Visibility = 'Visible' } else { $ui[('View' + $v)].Visibility = 'Collapsed' }
+    }
+    foreach ($v in @('Overview', 'Notes', 'Console')) {
+        if ($v -eq $Name) { $ui[('Nav' + $v)].Tag = 'active' } else { $ui[('Nav' + $v)].Tag = '' }
     }
 }
 
