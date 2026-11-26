@@ -28,6 +28,8 @@ $script:XenithDefaults = @{
     LOG_DIR     = ''
     LOG_LEVEL   = 'info'
     WINDOWS_BAR_MB = ''
+    PERF_LOG    = 'off'
+    PERF_INTERVAL = '1'
 }
 
 function Get-XenithRepo {
@@ -160,6 +162,13 @@ function Start-XenithRun {
     param([switch]$Preload)
     $cfg = Get-XenithConfig
     $setup = Get-XenithPlaySet
+    $perfEvery = 0
+    if ($cfg.PERF_LOG -eq 'on') {
+        $validPerfInterval = [int]::TryParse([string]$cfg.PERF_INTERVAL, [ref]$perfEvery)
+        if (-not $validPerfInterval -or $perfEvery -lt 1 -or $perfEvery -gt 60) {
+            throw 'PERF_INTERVAL must be a whole number from 1 to 60 seconds'
+        }
+    }
     $exe = $setup.exe
     if (-not (Test-Path $exe)) { throw ("no runtime at {0}: build first" -f $exe) }
     if (-not ($cfg.GAME -and (Test-Path $cfg.GAME))) { throw 'no game exe in the configuration' }
@@ -189,10 +198,32 @@ function Start-XenithRun {
     $runArgs = @('run', ('"' + $game + '"'), '--execute')
     if (-not $setup.series_x) { $runArgs += @('--console', 'series-s') }
     $proc = Start-Process -FilePath $victory -ArgumentList $runArgs -WorkingDirectory $repo -NoNewWindow -RedirectStandardOutput ($logFile + '.out') -RedirectStandardError $logFile -PassThru
+    $perfLog = ''
+    $perfError = ''
+    if ($cfg.PERF_LOG -eq 'on') {
+        $perfLog = Join-Path $logDir ("victory-perf-{0}-{1}.csv" -f (Get-Date -Format 'yyyyMMdd-HHmmss'), $proc.Id)
+        $captureScript = Join-Path $PSScriptRoot 'capture-usage.ps1'
+        $captureArgs = @(
+            '-NoProfile', '-ExecutionPolicy', 'Bypass',
+            '-File', ('"{0}"' -f $captureScript),
+            '-ProcessId', [string]$proc.Id,
+            '-Out', ('"{0}"' -f $perfLog),
+            '-Every', [string]$perfEvery,
+            '-ExitWhenStopped',
+            '-WaitForProcessSeconds', '10'
+        )
+        try {
+            Start-Process -FilePath 'powershell.exe' -ArgumentList $captureArgs -WindowStyle Hidden -ErrorAction Stop | Out-Null
+        } catch {
+            $perfError = $_.Exception.Message
+        }
+    }
     [pscustomobject]@{
         pid      = $proc.Id
         exe      = $victory
         log      = $logFile
+        perf_log = $perfLog
+        perf_error = $perfError
         started  = (Get-Date)
         render_scale = $setup.render_scale
     }

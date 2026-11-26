@@ -1,7 +1,7 @@
 # Measurements for a run: samples the machine and the run process once a
 # second and writes them to a CSV, so a frame-time claim on the RTX card has
-# a usage line beside it (the watchlist's RTX2080 line keeps this habit; the
-# script here is ours). Ctrl+C stops it; the CSV is written as it goes.
+# a usage line beside it. Ctrl+C stops a manual capture; launcher captures
+# stop when their run process exits. The CSV is written as it goes.
 #   scripts\capture-usage.ps1                                 run's usage-<date>.csv
 #   scripts\capture-usage.ps1 -Name victory_sm -Out D:\run.csv -Every 2
 # The counters come from CIM (Win32_PerfFormattedData_*), not Get-Counter,
@@ -14,14 +14,23 @@ param(
     # Where the CSV goes. Default: usage-<date>.csv in the current folder.
     [string]$Out = '',
     # Seconds between samples.
-    [int]$Every = 1
+    [ValidateRange(1, 60)][int]$Every = 1,
+    # Track one launcher process and stop when that run exits.
+    [int]$ProcessId = 0,
+    [switch]$ExitWhenStopped,
+    # When watching by name, give the launcher time to start the game process.
+    [ValidateRange(1, 600)][int]$WaitForProcessSeconds = 120
 )
 
 if (-not $Out) {
     $Out = "usage-$(Get-Date -Format yyyyMMdd-HHmmss).csv"
 }
 
-function Find-Run([string]$name) {
+function Find-Run([string]$name, [int]$processId) {
+    if ($processId -gt 0) {
+        Get-Process -Id $processId -ErrorAction SilentlyContinue
+        return
+    }
     Get-Process -Name $name -ErrorAction SilentlyContinue |
         Sort-Object StartTime | Select-Object -Last 1
 }
@@ -56,9 +65,24 @@ function Get-RunCpuPct($run) {
 # One row a tick: the machine and the run side by side.
 "sample,time,cpu_pct,ram_used_mb,ram_free_mb,gpu_pct,vram_mb,run_pid,run_cpu_pct,run_ram_mb" | Set-Content -Path $Out
 $n = 0
-Write-Host "Sampling every $Every s; the run is '$name*'; Ctrl+C stops. -> $Out"
+$seenRun = $false
+$waitStarted = Get-Date
+if ($ProcessId -gt 0) {
+    Write-Host "Sampling every $Every s for process $ProcessId; the CSV stops when it exits. -> $Out"
+} else {
+    Write-Host "Sampling every $Every s; the run is '$name*'; Ctrl+C stops. -> $Out"
+}
 while ($true) {
-    $run = Find-Run $Name
+    $run = Find-Run $Name $ProcessId
+    if ($run) {
+        $seenRun = $true
+    } elseif ($ExitWhenStopped) {
+        if ($seenRun -or ((Get-Date) - $waitStarted).TotalSeconds -ge $WaitForProcessSeconds) {
+            break
+        }
+        Start-Sleep -Seconds 1
+        continue
+    }
     $os = Get-CimInstance Win32_OperatingSystem
     $totalMb = [math]::Round($os.TotalVisibleMemorySize / 1KB)
     $freeMb = [math]::Round($os.FreePhysicalMemory / 1KB)

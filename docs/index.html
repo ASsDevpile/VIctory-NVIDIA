@@ -40,7 +40,6 @@
   header.site nav { margin-left: auto; display: flex; gap: 22px; font-size: 15px; flex-wrap: wrap; }
   header.site nav a { color: var(--muted); }
   header.site nav a:hover { color: var(--text); text-decoration: none; }
-
   .hero { padding: 72px 0 56px; text-align: center; }
   .hero h1 { font-size: 42px; margin: 0; letter-spacing: 0.5px; }
   .hero p.tag { color: var(--muted); font-size: 19px; max-width: 680px; margin: 22px auto 0; }
@@ -109,6 +108,19 @@
     font-size: 14px;
     padding: 26px 0 34px;
   }
+  @media (max-width: 720px) {
+    header.site { position: static; }
+    header.site .wrap { display: block; padding: 12px 18px; }
+    header.site nav {
+      margin: 8px -4px 0; gap: 18px; flex-wrap: nowrap; overflow-x: auto;
+      white-space: nowrap; padding: 2px 4px 8px; scrollbar-width: thin;
+    }
+    .wrap { padding: 0 18px; }
+    .hero { padding: 48px 0 38px; }
+    .hero h1 { font-size: clamp(32px, 8vw, 42px); }
+    .hero p.tag { font-size: 17px; }
+    .cards { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -116,7 +128,7 @@
 <header class="site">
   <div class="wrap">
     <span class="mark"><span class="grad">VIctory</span> NVIDIA</span>
-    <nav>
+    <nav aria-label="Main navigation">
       <a href="#about">About</a>
       <a href="#port">The RTX port</a>
       <a href="#start">Getting started</a>
@@ -124,6 +136,7 @@
       <a href="#console">Debug console</a>
       <a href="#dlss">DLSS</a>
       <a href="#preload">Preload</a>
+      <a href="#perf-log">Perf log</a>
       <a href="#switches">Switches</a>
       <a href="#troubleshooting">Troubleshooting</a>
       <a href="#legal">Legal</a>
@@ -241,8 +254,8 @@
         <h3><code>xenith-ui.cmd</code> — the window</h3>
         <p>A dark desktop window: the run's settings on cards, the adapter picked on
         its own, the cache, saves and DLSS folders on rows of their own, and a
-        <strong>Console tab</strong> with the run's log, a command line and
-        <a href="#console">log saving</a>.</p>
+        <strong>Console tab</strong> with the run's log, performance monitoring,
+        a command line and <a href="#console">log saving</a>.</p>
       </div>
       <div class="card">
         <h3>the script, directly</h3>
@@ -261,11 +274,44 @@
       <tr><td><code>-Upscaler</code></td><td><code>fsr</code> (the title's own) or <code>dlss</code> — see <a href="#dlss">the DLSS folder</a></td></tr>
       <tr><td><code>-DlssDir</code></td><td>where the NGX libraries live on their own (<code>VICTORY_DLSS_DIR</code>)</td></tr>
       <tr><td><code>-Preload</code></td><td>translate and warm before the run — see <a href="#preload">the preload</a></td></tr>
+      <tr><td><code>-PerfLog</code> / <code>-PerfEvery</code></td><td>sample system and run CPU/RAM plus GPU utilization and memory into a CSV in <code>debug-runs</code> until the run exits; interval is 1–60 seconds (default 1)</td></tr>
+      <tr><td><code>-LogDir</code></td><td>folder for the performance CSV (default: <code>debug-runs</code> beside the script)</td></tr>
       <tr><td><code>-CacheDir</code> / <code>-SavesDir</code></td><td>the derived files, and the saves, somewhere of your choosing</td></tr>
       <tr><td><code>-Build</code></td><td><code>diag</code> (the default, all measurements are of it) or <code>release</code> (ignores the skip list: a diagnostics switch)</td></tr>
       <tr><td><code>-NoSmoothMotion</code></td><td>start <code>victory.exe</code> itself, instead of the <code>victory_sm.exe</code> copy a Smooth Motion profile can be set for</td></tr>
       <tr><td><code>-More</code></td><td>anything else by name: <code>-More @{VICTORY_PANEL='1'}</code></td></tr>
     </table>
+  </div>
+</section>
+
+<section id="perf-log">
+  <div class="wrap">
+    <h2><span class="grad">Performance log</span> for stability checks</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>Turn it on in Settings</h3>
+        <p>Enable <strong>Perf log</strong> and choose a sample interval from 1 to 60 seconds.
+        The sampler runs alongside the game and stops when the run exits; it does not
+        change the render settings.</p>
+      </div>
+      <div class="card">
+        <h3>Find the CSV</h3>
+        <p>Each run gets its own timestamped <code>victory-perf-*.csv</code> in the
+        configured log folder. Without a custom folder, Xenith uses
+        <code>debug-runs</code> in the repository.</p>
+      </div>
+      <div class="card">
+        <h3>Compare stability over time</h3>
+        <p>Rows include system CPU and RAM, GPU utilization and memory, plus the
+        tracked run's PID, CPU and working-set memory. Keep the CSV beside the
+        matching run log when reporting a crash or slowdown.</p>
+      </div>
+    </div>
+    <p style="color: var(--muted); font-size: 15px; margin-top: 16px;">
+      The same sampler is available from the script:
+      <code>scripts\play-nvidia.ps1 -Exe "D:\Games\game.exe" -PerfLog -PerfEvery 2</code>.
+      The console launcher exposes the toggle and interval in Settings as well.
+    </p>
   </div>
 </section>
 
