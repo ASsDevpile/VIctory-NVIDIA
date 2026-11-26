@@ -13,7 +13,7 @@ Add-Type -AssemblyName System.Windows.Forms
 # --- settings ------------------------------------------------------------
 
 $IniPath = Join-Path $PSScriptRoot 'xenith.ini'
-$Keys = @('GAME', 'RESOLUTION', 'ADAPTER', 'QUALITY', 'RAYTRACING', 'BUILD', 'SKIP', 'UPSCALER')
+$Keys = @('GAME', 'RESOLUTION', 'ADAPTER', 'QUALITY', 'RAYTRACING', 'BUILD', 'SKIP', 'UPSCALER', 'CONSOLE', 'PRELOAD', 'CACHE_DIR', 'SAVES_DIR')
 
 function Read-Ini {
     $s = @{}
@@ -22,6 +22,8 @@ function Read-Ini {
     $s['RAYTRACING'] = 'off'
     $s['BUILD'] = 'diag'
     $s['UPSCALER'] = 'fsr'
+    $s['CONSOLE'] = 'S'
+    $s['PRELOAD'] = 'off'
     if (Test-Path -LiteralPath $IniPath) {
         foreach ($line in Get-Content -LiteralPath $IniPath) {
             $i = $line.IndexOf('=')
@@ -63,7 +65,7 @@ $script:HasNvidia = [bool]($script:Gpus | Where-Object { $_ -match 'NVIDIA|GeFor
 $Xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="XENITH VI for an RTX card" Height="740" Width="960"
+        Title="XENITH VI for an RTX card" Height="820" Width="960"
         MinWidth="820" MinHeight="640" WindowStartupLocation="CenterScreen"
         Background="#0B0E17" Foreground="#E7E9F5" FontFamily="Segoe UI" FontSize="13">
   <Window.Resources>
@@ -267,8 +269,9 @@ $Xaml = @'
         </Grid>
         <Grid Margin="0,4,0,0">
           <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="120"/><ColumnDefinition Width="220"/><ColumnDefinition Width="30"/>
-            <ColumnDefinition Width="120"/><ColumnDefinition/>
+            <ColumnDefinition Width="120"/><ColumnDefinition Width="190"/><ColumnDefinition Width="30"/>
+            <ColumnDefinition Width="115"/><ColumnDefinition Width="160"/><ColumnDefinition Width="30"/>
+            <ColumnDefinition Width="115"/><ColumnDefinition/>
           </Grid.ColumnDefinitions>
           <TextBlock Grid.Column="0" Style="{StaticResource Label}" Text="Build"/>
           <ComboBox Grid.Column="1" x:Name="CmbBuild" Margin="0,3" SelectedIndex="0">
@@ -276,11 +279,16 @@ $Xaml = @'
             <ComboBoxItem Content="release (faster)"/>
           </ComboBox>
           <TextBlock Grid.Column="3" Style="{StaticResource Label}" Text="Render height"/>
-          <ComboBox Grid.Column="4" x:Name="CmbRes" Margin="0,3" MaxWidth="240" HorizontalAlignment="Left" SelectedIndex="0">
+          <ComboBox Grid.Column="4" x:Name="CmbRes" Margin="0,3" MaxWidth="150" HorizontalAlignment="Left" SelectedIndex="0">
             <ComboBoxItem Content="half (the script's speed pick)" Tag=""/>
             <ComboBoxItem Content="2160" Tag="2160"/><ComboBoxItem Content="1440" Tag="1440"/>
             <ComboBoxItem Content="1080" Tag="1080"/><ComboBoxItem Content="720" Tag="720"/>
             <ComboBoxItem Content="540" Tag="540"/><ComboBoxItem Content="480" Tag="480"/>
+          </ComboBox>
+          <TextBlock Grid.Column="6" Style="{StaticResource Label}" Text="Console"/>
+          <ComboBox Grid.Column="7" x:Name="CmbConsole" Margin="0,3" MaxWidth="220" HorizontalAlignment="Left" SelectedIndex="0">
+            <ComboBoxItem Content="Series S (faster)" Tag="S"/>
+            <ComboBoxItem Content="Series X (full output)" Tag="X"/>
           </ComboBox>
         </Grid>
       </StackPanel>
@@ -303,7 +311,8 @@ $Xaml = @'
           <TextBlock Grid.Column="0" Style="{StaticResource Label}" Text="Upscaler"/>
           <ComboBox Grid.Column="1" x:Name="CmbUpscaler" Width="340" HorizontalAlignment="Left" Margin="0,3" SelectedIndex="0">
             <ComboBoxItem Content="The title's own (FSR; the default)" Tag="fsr"/>
-            <ComboBoxItem Content="DLSS (planned for a later release)" Tag="dlss" IsEnabled="False"/>
+            <ComboBoxItem Content="DLSS (a proxy DLL beside the game; see docs)" Tag="dlss"
+                           ToolTip="The title runs FSR; the proxy speaks FSR to it and DLSS to the driver. Put nvngx_dlss.dll and its NGX DLLs beside the game's exe (yours to supply, like the game files)."/>
           </ComboBox>
         </Grid>
         <Grid Margin="0,4,0,0">
@@ -329,17 +338,44 @@ $Xaml = @'
         </StackPanel>
       </StackPanel>
     </Border>
-    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,2,0,10">
+    <Border Grid.Row="3" Style="{StaticResource CardBorder}" Margin="0,0,0,10">
+      <StackPanel>
+        <TextBlock Style="{StaticResource CardTitle}" Text="FILES AND WARM-UP"/>
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="120"/><ColumnDefinition/><ColumnDefinition Width="86"/><ColumnDefinition Width="86"/>
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0" Style="{StaticResource Label}" Text="Cache folder"/>
+          <TextBox Grid.Column="1" x:Name="TxtCache" Margin="0,3"
+                   ToolTip="The runtime's shader translations, pipelines and images live here (VICTORY_CACHE_DIR). Empty: the victory.toml pick."/>
+          <Button Grid.Column="2" x:Name="BtnCacheOpen" Content="Open" Margin="8,3,0,3"/>
+          <Button Grid.Column="3" x:Name="BtnCachePick" Content="Change..." Margin="8,3,0,3"/>
+        </Grid>
+        <Grid Margin="0,4,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="120"/><ColumnDefinition/><ColumnDefinition Width="86"/><ColumnDefinition Width="86"/>
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0" Style="{StaticResource Label}" Text="Saves folder"/>
+          <TextBox Grid.Column="1" x:Name="TxtSaves" Margin="0,3"
+                   ToolTip="Where the title's saves go (VICTORY_SAVES_DIR). Empty: beside the persistent local storage."/>
+          <Button Grid.Column="2" x:Name="BtnSavesOpen" Content="Open" Margin="8,3,0,3"/>
+          <Button Grid.Column="3" x:Name="BtnSavesPick" Content="Change..." Margin="8,3,0,3"/>
+        </Grid>
+        <CheckBox x:Name="ChkPreload" Content="Preload shaders before Run (translate them and make their pipelines; minutes, once)"
+                  Foreground="#E7E9F5" Margin="0,8,0,0" VerticalAlignment="Center"/>
+      </StackPanel>
+    </Border>
+    <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,2,0,10">
       <Button x:Name="BtnRun" Style="{StaticResource RunButton}" Content="Run" Width="130" Height="36"/>
       <Button x:Name="BtnStop" Content="Stop" Width="90" Height="36" Margin="10,0,0,0" IsEnabled="False"/>
       <Button x:Name="BtnSave" Content="Save settings" Width="120" Height="36" Margin="10,0,0,0"/>
     </StackPanel>
-    <Border Grid.Row="4" Background="#0E1224" BorderBrush="#222A4A" BorderThickness="1" CornerRadius="4" Margin="0,0,0,8">
+    <Border Grid.Row="5" Background="#0E1224" BorderBrush="#222A4A" BorderThickness="1" CornerRadius="4" Margin="0,0,0,8">
       <TextBox x:Name="LogBox" IsReadOnly="True" BorderThickness="0" Background="Transparent"
                FontFamily="Consolas" FontSize="12" VerticalScrollBarVisibility="Auto"
                TextWrapping="NoWrap" AcceptsReturn="True" MinHeight="140"/>
     </Border>
-    <TextBlock Grid.Row="5" x:Name="LegalNote" TextWrapping="Wrap" FontSize="11.5" Foreground="#7A80A3"
+    <TextBlock Grid.Row="6" x:Name="LegalNote" TextWrapping="Wrap" FontSize="11.5" Foreground="#7A80A3"
                Text="Bring your own files: this runtime runs a game you already own and supplies nothing of it - no game code, assets or keys. It is a compatibility layer, not affiliated with or endorsed by Microsoft, Rockstar Games or any publisher. Code: GPL-3.0-or-later. Launcher: a copy of XENITH VI (ASsDevpile/XenithVI, GPL-3.0-or-later)."/>
   </Grid>
 </Window>
@@ -407,6 +443,10 @@ $Win.FindName('ChkRay').IsChecked = ($S['RAYTRACING'] -ieq 'on')
 $resTags = @('', '2160', '1440', '1080', '720', '540', '480')
 $Win.FindName('CmbRes').SelectedIndex = [Math]::Max(0, $resTags.IndexOf($S['RESOLUTION']))
 $Win.FindName('CmbBuild').SelectedIndex = [Math]::Max(0, @('diag', 'release').IndexOf($S['BUILD']))
+$Win.FindName('CmbConsole').SelectedIndex = [Math]::Max(0, @('S', 'X').IndexOf($S['CONSOLE'].ToUpper()))
+$Win.FindName('TxtCache').Text = $S['CACHE_DIR']
+$Win.FindName('TxtSaves').Text = $S['SAVES_DIR']
+$Win.FindName('ChkPreload').IsChecked = ($S['PRELOAD'] -ieq 'on')
 if ($S['UPSCALER'] -ieq 'dlss') { $Win.FindName('CmbUpscaler').SelectedIndex = 0 }
 $Win.FindName('CmbRt').SelectedIndex = 0
 if ($S['SKIP'] -eq 'none') { $Win.FindName('CmbRt').SelectedIndex = 1 }
@@ -430,6 +470,10 @@ function Collect-Settings {
         'custom' { $S['SKIP'] = $Win.FindName('TxtSkip').Text.Trim() }
     }
     $S['UPSCALER'] = [string](($Win.FindName('CmbUpscaler').SelectedItem).Tag)
+    $S['CONSOLE'] = [string](($Win.FindName('CmbConsole').SelectedItem).Tag)
+    $S['PRELOAD'] = $(if ($Win.FindName('ChkPreload').IsChecked) { 'on' } else { 'off' })
+    $S['CACHE_DIR'] = $Win.FindName('TxtCache').Text.Trim()
+    $S['SAVES_DIR'] = $Win.FindName('TxtSaves').Text.Trim()
     $S['QUALITY'] = $(if ($Win.FindName('ChkQuality').IsChecked) { 'on' } else { 'off' })
     $S['RAYTRACING'] = $(if ($Win.FindName('ChkRay').IsChecked) { 'on' } else { 'off' })
     $S['RESOLUTION'] = $resTags[$Win.FindName('CmbRes').SelectedIndex]
@@ -456,6 +500,28 @@ $Win.FindName('BtnDetect').Add_Click({
     Fill-AdapterCombo ''
     Log-Line ('cards found: ' + $(if ($script:Gpus) { $script:Gpus -join '; ' } else { 'none' }))
 })
+
+function Pick-Folder {
+    param([string]$target)
+    $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dlg.Description = 'XENITH VI'
+    if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+        $Win.FindName($target).Text = $dlg.SelectedPath
+    }
+}
+
+function Open-Folder {
+    param([string]$target)
+    $path = $Win.FindName($target).Text.Trim()
+    if (-not $path) { Info-Or-Error 'The folder is unset, so the run uses the victory.toml pick.'; return }
+    if (-not (Test-Path -LiteralPath $path)) { [void][System.IO.Directory]::CreateDirectory($path) }
+    Start-Process explorer.exe -ArgumentList ('"' + $path + '"')
+}
+
+$Win.FindName('BtnCachePick').Add_Click({ Pick-Folder 'TxtCache' })
+$Win.FindName('BtnSavesPick').Add_Click({ Pick-Folder 'TxtSaves' })
+$Win.FindName('BtnCacheOpen').Add_Click({ Open-Folder 'TxtCache' })
+$Win.FindName('BtnSavesOpen').Add_Click({ Open-Folder 'TxtSaves' })
 
 $Win.FindName('BtnSave').Add_Click({
     Collect-Settings
@@ -487,6 +553,11 @@ function Start-Run {
     if ($S['RESOLUTION']) { $argList.Add('-Resolution'); $argList.Add($S['RESOLUTION']) }
     if ($S['ADAPTER']) { $argList.Add('-Adapter'); $argList.Add('"{0}"' -f $S['ADAPTER']) }
     if ($S['SKIP']) { $argList.Add("-More @{VICTORY_SKIP_PIPELINES='{0}'}" -f $S['SKIP']) }
+    if ($S['CONSOLE'] -ieq 'X') { $argList.Add('-Console'); $argList.Add('X') }
+    if ($S['UPSCALER'] -ieq 'dlss') { $argList.Add('-Upscaler'); $argList.Add('dlss') }
+    if ($S['PRELOAD'] -ieq 'on') { $argList.Add('-Preload') }
+    if ($S['CACHE_DIR']) { $env:VICTORY_CACHE_DIR = $S['CACHE_DIR'] }
+    if ($S['SAVES_DIR']) { $env:VICTORY_SAVES_DIR = $S['SAVES_DIR'] }
 
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = 'powershell'
@@ -510,8 +581,11 @@ function Start-Run {
     $Win.FindName('BtnRun').IsEnabled = $false
     $Win.FindName('BtnStop').IsEnabled = $true
     Log-Line ('run  ' + $S['GAME'])
-    Log-Line ('build ' + $S['BUILD'] + ', quality ' + $S['QUALITY'] + ', ray tracing ' + $S['RAYTRACING'] +
-              ', adapter ' + $(if ($S['ADAPTER']) { $S['ADAPTER'] } else { 'auto' }))
+    Log-Line ('build ' + $S['BUILD'] + ', ' + $(if ($S['CONSOLE'] -ieq 'X') { 'Series X' } else { 'Series S' }) +
+              ', upscaler ' + $S['UPSCALER'] + ', preload ' + $S['PRELOAD'])
+    Log-Line ('adapter ' + $(if ($S['ADAPTER']) { $S['ADAPTER'] } else { 'auto' }) +
+              ', cache ' + $(if ($S['CACHE_DIR']) { $S['CACHE_DIR'] } else { 'the default' }) +
+              ', saves ' + $(if ($S['SAVES_DIR']) { $S['SAVES_DIR'] } else { 'the default' }))
 }
 
 function Stop-Run {

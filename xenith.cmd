@@ -17,6 +17,11 @@ set "QUALITY=on"
 set "RAYTRACING=off"
 set "BUILD=diag"
 set "SKIP="
+set "CONSOLE=S"
+set "UPSCALER="
+set "PRELOAD=off"
+set "CACHE_DIR="
+set "SAVES_DIR="
 set "NVIDIA_CARD="
 set "EXTRA_ADVICE="
 if exist "xenith.ini" for /f "usebackq tokens=1,* delims==" %%a in ("xenith.ini") do set "%%a=%%b"
@@ -30,6 +35,7 @@ if not defined GAME (
 
 :menu
 set "MODE="
+set "RUN_PRELOAD="
 if not exist "%GAME%" echo Warning: "%GAME%" does not exist.
 
 set "SCRIPT=scripts\play-nvidia.ps1"
@@ -45,6 +51,7 @@ if defined NVIDIA_CARD (echo card              %NVIDIA_CARD%) else echo card    
 if defined RESOLUTION echo render height    %RESOLUTION%
 if defined ADAPTER echo adapter           %ADAPTER%
 echo quality %QUALITY%   ray tracing %RAYTRACING%
+echo console %CONSOLE%   upscaler %UPSCALER%   preload %PRELOAD%
 echo.
 echo   1  Play                          (the fork's settings)
 echo   2  Play, release build           (faster)
@@ -52,6 +59,7 @@ echo   3  Play without quality patches  (full speed, more glitches)
 echo   4  Ray tracing on                (lit indirect light, slower)
 echo   5  Pipelines skipped             (%SKIP%)
 echo   6  Settings
+echo   7  Preload shaders           (translate and warm, once)
 echo   0  Exit
 echo.
 set "CHOICE="
@@ -64,6 +72,7 @@ if "%CHOICE%"=="3" (set "MODE=play" & set "QUALITY=off")
 if "%CHOICE%"=="4" set "MODE=rt"
 if "%CHOICE%"=="5" set "MODE=skip"
 if "%CHOICE%"=="6" goto settings
+if "%CHOICE%"=="7" (set "MODE=play" & set "RUN_PRELOAD=1")
 if not defined MODE (
     echo No such mode: %CHOICE%
     goto menu
@@ -84,11 +93,17 @@ set "ARGS=-Exe "%GAME%" -Build %BUILD%"
 if /i "%QUALITY%"=="on" set "ARGS=%ARGS% -Quality"
 if "%MODE%"=="rt" set "ARGS=%ARGS% -RayTracing"
 if defined RESOLUTION set "ARGS=%ARGS% -Resolution %RESOLUTION%"
-if defined ADAPTER set "ARGS=%ARGS% -Adapter %ADAPTER%"
+if defined ADAPTER set "ARGS=%ARGS% -Adapter "%ADAPTER%""
+if /i "%CONSOLE%"=="X" set "ARGS=%ARGS% -Console X"
+if /i "%UPSCALER%"=="dlss" set "ARGS=%ARGS% -Upscaler dlss"
+if /i "%PRELOAD%"=="on" set "RUN_PRELOAD=1"
+if defined CACHE_DIR set "ARGS=%ARGS% -CacheDir "%CACHE_DIR%""
+if defined SAVES_DIR set "ARGS=%ARGS% -SavesDir "%SAVES_DIR%""
+if defined RUN_PRELOAD set "ARGS=%ARGS% -Preload"
 if defined SKIP set "ARGS=%ARGS% -More @{VICTORY_SKIP_PIPELINES='%SKIP%'}"
 
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -File %ARGS%
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT%" %ARGS%
 echo.
 pause
 goto menu
@@ -104,6 +119,11 @@ echo    4  Quality          %QUALITY%  (fewer stretched bodies, rainbow skin)
 echo    5  Ray tracing      %RAYTRACING%
 echo    6  Build            %BUILD%  (diag or release)
 echo    7  Skip pipelines   %SKIP%
+echo    8  Console          %CONSOLE%  (S is faster, X is the full output)
+echo    9  Upscaler         %UPSCALER%  (empty: FSR; dlss: a proxy DLL beside the game)
+echo   10  Preload shaders  %PRELOAD%
+echo   11  Cache folder     %CACHE_DIR%  (empty: the victory.toml pick)
+echo   12  Saves folder     %SAVES_DIR%  (empty: beside the persistent storage)
 echo    0  Back
 echo.
 set "WHICH="
@@ -117,6 +137,11 @@ if "%WHICH%"=="4" call :ask QUALITY "4 Quality patches on or off"
 if "%WHICH%"=="5" call :ask RAYTRACING "5 Ray tracing on or off"
 if "%WHICH%"=="6" call :ask BUILD "6 Build (diag or release)"
 if "%WHICH%"=="7" call :ask SKIP "7 Pipelines to skip, comma-separated hashes"
+if "%WHICH%"=="8" call :ask CONSOLE "8 Console S or X"
+if "%WHICH%"=="9" call :ask UPSCALER "9 Upscaler fsr or dlss"
+if "%WHICH%"=="10" call :ask PRELOAD "10 Preload shaders on or off"
+if "%WHICH%"=="11" call :ask CACHE_DIR "11 Cache folder (a full path, empty: the default)"
+if "%WHICH%"=="12" call :ask SAVES_DIR "12 Saves folder (a full path, empty: the default)"
 goto settings
 
 :found_card
@@ -133,5 +158,5 @@ if defined VALUE set "%~1=%VALUE%"
 goto :eof
 
 :save
-(for %%k in (GAME RESOLUTION ADAPTER QUALITY RAYTRACING BUILD SKIP) do echo %%k=!%%k!)>xenith.ini
+(for %%k in (GAME RESOLUTION ADAPTER QUALITY RAYTRACING BUILD SKIP UPSCALER CONSOLE PRELOAD CACHE_DIR SAVES_DIR) do echo %%k=!%%k!)>xenith.ini
 goto :eof
