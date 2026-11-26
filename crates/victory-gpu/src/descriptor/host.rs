@@ -3159,7 +3159,7 @@ impl HostHeap {
         let Some(offset) = gpu.checked_sub(base).filter(|&o| o < width && crate::port_cbv::raw_ok(o)) else {
             return false;
         };
-        let bytes = u64::from(constant_bytes(size)).min(width - offset) & !3;
+        let bytes = u64::from(constant_view_size(size)).min(width - offset) & !3;
         if bytes == 0 {
             return false;
         }
@@ -3178,7 +3178,7 @@ impl HostHeap {
         };
         let cbv = D3D12_CONSTANT_BUFFER_VIEW_DESC {
             BufferLocation: if gpu.is_multiple_of(256) { gpu } else { 0 },
-            SizeInBytes: if gpu.is_multiple_of(256) { constant_bytes(size).min(((width - offset) & !255) as u32) } else { 0 },
+            SizeInBytes: if gpu.is_multiple_of(256) { constant_view_size(size).min(((width - offset) & !255) as u32) } else { 0 },
         };
         let cbv = if cbv.SizeInBytes == 0 { D3D12_CONSTANT_BUFFER_VIEW_DESC::default() } else { cbv };
         // SAFETY: slots of our heaps; the ranges lie in the live buffer (a
@@ -4399,12 +4399,12 @@ fn constant_twinned(
     let cbv = if gpu.is_multiple_of(256) && room >= 256 {
         D3D12_CONSTANT_BUFFER_VIEW_DESC {
             BufferLocation: gpu,
-            SizeInBytes: constant_bytes(size).min((room & !255) as u32),
+            SizeInBytes: constant_view_size(size).min((room & !255) as u32),
         }
     } else {
         D3D12_CONSTANT_BUFFER_VIEW_DESC::default()
     };
-    let bytes = u64::from(constant_bytes(size)).min(room) & !3;
+    let bytes = u64::from(constant_view_size(size)).min(room) & !3;
     // SAFETY: slots of our heaps; the ranges lie in the live buffer.
     unsafe {
         host.device.CreateConstantBufferView(Some(&cbv), at);

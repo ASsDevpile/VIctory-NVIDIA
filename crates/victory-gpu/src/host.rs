@@ -3854,7 +3854,7 @@ fn late_line(frames: f64) {
         );
     }
     card_steps::log(frames);
-crate::port::log(frames);
+    crate::port::log(frames);
     crate::port_cbv::log(frames);
     crate::picked::log(frames);
     #[cfg(feature = "diagnostics")]
@@ -6080,7 +6080,7 @@ impl Host {
                     tracing::warn!("slow list command, {ms:.1} ms: {op}");
                 }
             }
-            let _ = (_i, started);
+            let _ = (i, started);
         }
         let _ = &firsts;
         FINISHED.store(this_submission, Ordering::Release);
