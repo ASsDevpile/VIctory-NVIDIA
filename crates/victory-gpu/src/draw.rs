@@ -4537,7 +4537,7 @@ fn readable(list: &HostList, kind: ResourceType, view: &View) {
                 // SAFETY: a live resource.
                 let d = unsafe { t.GetDesc() };
                 if d.Flags.0 & 7 == 0 {
-                    tracing::debug!(
+                    tracing::trace!(
                         resource = format_args!("{resource:#x}"),
                         ?d,
                         "a shader reads a texture the title fills"
