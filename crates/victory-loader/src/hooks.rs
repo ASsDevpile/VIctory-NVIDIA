@@ -71,10 +71,15 @@ pub(crate) const RENDER_SCALE_ENV: &str = "VICTORY_RENDER_SCALE";
 /// on every console profile (Series S otherwise picks FSR).
 pub(crate) const OWN_UPSCALER_ENV: &str = "VICTORY_OWN_UPSCALER";
 /// Environment variable that forces the title's FSR path (`fsr`, or `dlss`
-/// as the launcher's alias): a DLSS proxy in the title's folder speaks FSR
-/// to the title and DLSS to the driver, and only works while FSR runs. It
-/// wins over [`OWN_UPSCALER_ENV`].
+/// as the launcher's alias): a DLSS proxy speaks FSR to the title and DLSS
+/// to the driver, and only works while FSR runs. It wins over
+/// [`OWN_UPSCALER_ENV`].
 pub(crate) const UPSCALER_ENV: &str = "VICTORY_UPSCALER";
+/// Environment variable naming the DLSS folder: a folder of its own that
+/// holds the NGX libraries (`nvngx*.dll` and friends), away from the
+/// title's files. Empty or unset, the loader also looks beside the title's
+/// executable (where the proxy would load them from).
+pub(crate) const DLSS_DIR_ENV: &str = "VICTORY_DLSS_DIR";
 
 /// A patch whose bytes are computed at load time.
 struct OwnedPatch {
@@ -161,15 +166,20 @@ fn parse_scale(text: &str) -> Option<f32> {
     (0.2..=1.0).contains(&v).then_some(v)
 }
 
-/// Whether an NVIDIA NGX library sits beside the title's executable (the
-/// loader runs in the title's process). A DLSS setup needs one: the proxy
-/// that takes the title's FSR calls loads it.
-fn ngx_present() -> bool {
-    match std::env::current_exe()
+/// The folder an NVIDIA NGX library was found in, if anywhere: the
+/// [`DLSS_DIR_ENV`] folder first (DLSS's own folder, never the title's
+/// files), then beside the title's executable (the loader runs in the
+/// title's process, and a proxy there loads from its own folder). A DLSS
+/// setup needs one: the proxy that takes the title's FSR calls loads it.
+fn ngx_dir() -> Option<std::path::PathBuf> {
+    let named = std::env::var_os(DLSS_DIR_ENV)
+        .filter(|d| !d.is_empty())
+        .map(std::path::PathBuf::from);
+    let beside = std::env::current_exe()
         .ok()
-        .and_then(|exe| exe.parent().map(|p| p.to_path_buf()))
-    {
-        Some(dir) => std::fs::read_dir(dir)
+        .and_then(|exe| exe.parent().map(|p| p.to_path_buf()));
+    [named, beside].into_iter().flatten().find(|dir| {
+        std::fs::read_dir(dir)
             .into_iter()
             .flatten()
             .flatten()
@@ -179,9 +189,8 @@ fn ngx_present() -> bool {
                 name.len() > 4
                     && name.rsplit('.').next() == Some("dll")
                     && name.to_ascii_lowercase().starts_with("nvngx")
-            }),
-        None => false,
-    }
+            })
+    })
 }
 
 /// Applies the resolution levers asked for in the environment
@@ -212,15 +221,14 @@ pub(crate) unsafe fn resolution_levers(base: usize, hash: &blake3::Hash) -> usiz
     }
     let mut applied = 0;
     if upscaler.as_deref() == Some("dlss") {
-        let here = ngx_present();
+        let dir = ngx_dir().map(|d| d.display().to_string());
         tracing::info!(
-            found = here,
-            "DLSS: a proxy DLL beside the title speaks FSR to it and DLSS to the driver ({UPSCALER_ENV}=dlss); {}",
-            if here {
-                "an NGX library is beside the title"
-            } else {
-                "no NGX library found beside the title (a missing one leaves FSR as it is)"
-            }
+            "DLSS: the title runs its FSR path and the NVIDIA libraries stay out of the game's folder ({UPSCALER_ENV}=dlss); {}",
+            dir.as_deref()
+                .map(|d| format!("the NGX libraries are at {d}"))
+                .unwrap_or_else(|| format!(
+                    "no NGX library found (without one FSR stays as it is); put nvngx*.dll in a folder of its own and name it with {DLSS_DIR_ENV}"
+                ))
         );
     }
     if own {

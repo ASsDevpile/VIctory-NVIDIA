@@ -82,13 +82,16 @@ Or use the launcher: `xenith.cmd` (a menu; a special copy of the
 [Xenith VI](https://github.com/ASsDevpile/XenithVI) launcher, changed for
 this fork) or its window, `xenith-ui.cmd`. Both keep their settings in
 `xenith.ini` (title path, console Series S or X, render height, the card,
-quality, the upscaler, shader preload, and where the cache and the saves
-live) and start through `scripts\play-nvidia.ps1`. The card is found for you
-(the fastest is picked by default; the window names yours and lets you pick
-another). The upscaler row picks FSR (the title's own) or DLSS: set, the
-title runs its FSR path and a DLSS proxy DLL beside the game - yours to
-supply, like the rest of the NVIDIA files - speaks DLSS to the driver. The
-preload tick translates the shaders and makes their pipelines before the run
+quality, the upscaler, shader preload, and where the cache, the saves and
+the DLSS files live) and start through `scripts\play-nvidia.ps1`. The card
+is found for you (the fastest is picked by default; the window names yours
+and lets you pick another). The upscaler row picks FSR (the title's own) or
+DLSS: set, the title runs its FSR path and a DLSS proxy - yours to supply,
+like the rest of the NVIDIA files - speaks DLSS to the driver. The proxy and
+its NGX DLLs live in a folder of their own (`dlss\` next to the launcher,
+or name any folder with `VICTORY_DLSS_DIR`); the game's folder is never
+touched. The preload tick translates the shaders and makes their pipelines
+before the run
 (minutes, once). The project's website is
 [docs/index.html](docs/index.html) (GitHub Pages serves it from `docs/`).
 

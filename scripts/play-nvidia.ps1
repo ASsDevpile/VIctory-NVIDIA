@@ -13,8 +13,10 @@
 # -Console         Series S (the default, faster) or Series X (slower, full output); -SeriesX is the
 #                  same as -Console X.
 # -Upscaler        fsr (the default: the title's FSR) or dlss: the title runs its FSR path, and a DLSS proxy
-#                  DLL beside the game speaks FSR to it and DLSS to the driver (VICTORY_UPSCALER; the proxy
-#                  and its NGX DLLs are yours to place, like the rest of the NVIDIA files).
+#                  speaks FSR to it and DLSS to the driver (VICTORY_UPSCALER). The proxy and its NGX DLLs live
+#                  in a folder of their own (VICTORY_DLSS_DIR, -DlssDir), never among the game's files.
+# -DlssDir         the DLSS folder: where the NGX libraries (nvngx*.dll and friends) live on their own.
+#                  Empty: the loader also looks beside the launcher that set it.
 # -Preload         translate the title's shaders into the cache and make their pipelines before the run
 #                  (minutes, once): the run then starts without the first-seen-places hitches.
 # -CacheDir        where the runtime keeps its derived files (shader translations, pipelines, images)
@@ -35,6 +37,7 @@ param(
     [ValidateSet('2160', '1440', '1080', '720', '540', '480')][string]$Resolution,
     [string]$Adapter,
     [ValidateSet('fsr', 'dlss')][string]$Upscaler,
+    [string]$DlssDir,
     [switch]$Preload,
     [string]$CacheDir,
     [string]$SavesDir,
@@ -117,7 +120,8 @@ if (-not $NoSmoothMotion) {
 # (Other settings left over in this window go; where your files are stays.)
 if ($CacheDir) { $env:VICTORY_CACHE_DIR = $CacheDir }
 if ($SavesDir) { $env:VICTORY_SAVES_DIR = $SavesDir }
-$paths = 'VICTORY_CONFIG', 'VICTORY_GAME_DIR', 'VICTORY_CACHE_DIR', 'VICTORY_DATA_DIR', 'VICTORY_SAVES_DIR'
+if ($DlssDir) { $env:VICTORY_DLSS_DIR = $DlssDir }
+$paths = 'VICTORY_CONFIG', 'VICTORY_GAME_DIR', 'VICTORY_CACHE_DIR', 'VICTORY_DATA_DIR', 'VICTORY_SAVES_DIR', 'VICTORY_DLSS_DIR'
 Get-ChildItem Env:VICTORY_* | Where-Object { $_.Name -notin $paths } | ForEach-Object { Remove-Item "Env:$($_.Name)" }
 foreach ($k in $settings.Keys) { Set-Item "Env:$k" $settings[$k] }
 $Exe = (Resolve-Path $Exe).Path
