@@ -888,6 +888,16 @@ fn merge(title: &[u8; PIECE], ours: &mut [u8], never: bool) -> usize {
     changed
 }
 
+/// A host view heap is gone: its run of title-memory views goes with it, so
+/// that a heap made later at the same address does not find this one's run
+/// (fork pull request #589, AscilCH).
+pub(crate) fn forget_heap(heap: &HostHeap) {
+    let key = std::ptr::from_ref(heap) as usize;
+    if let Some(m) = MEMORY.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
+        m.heaps.remove(&key);
+    }
+}
+
 /// Before a draw whose shader reads title memory by address: what its
 /// root arguments name is made ready (`addresses`: its root views, of them
 /// `written` those it writes; `constants`: its root constants, see the
