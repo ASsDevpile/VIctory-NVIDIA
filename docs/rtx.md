@@ -56,12 +56,15 @@ an RTX card has been run yet, so nothing there is measured.
 | `VICTORY_CONSTANT_MARKS=1` | constant buffer slots are marked in the strides' buffer so a computed pick reads zeros through a slot with no buffer where it would fault; off until measured in the game |
 | `VICTORY_PIPELINE_WAIT_ONCE=0` | a pipeline that outlasts its wait budget waits again every frame, as before; unset, one budget over the whole run, its draws dropped until it is made |
 | `VICTORY_CLAMP_WAITS=0` | the indirect clamps keep their two global waits for earlier shader writes; unset they wait, where on a Radeon the waits were every clamp |
-| `VICTORY_UPSCALER=dlss` | runs the title's FSR path with the levers in place of the own-upscaler force: a DLSS proxy DLL beside the game (yours to supply) speaks FSR to the title and DLSS to the driver; set, it wins over `VICTORY_OWN_UPSCALER` and the loader logs whether an NGX library (`nvngx*.dll`) sits beside the title |
+| `VICTORY_UPSCALER=dlss` | runs the title's FSR path with the levers in place of the own-upscaler force: a DLSS proxy (yours to supply) speaks FSR to the title and DLSS to the driver; set, it wins over `VICTORY_OWN_UPSCALER` and the loader logs which folder it found the NGX libraries (`nvngx*.dll`) in |
+| `VICTORY_DLSS_DIR` | the DLSS folder: where the NGX libraries (`nvngx*.dll` and friends) live on their own, away from the title's files. Empty, the loader also looks beside the title's executable |
 | `VICTORY_SAVES_DIR` | where the title's saves live, instead of beside the persistent local storage in the data folder |
 
 ## The launchers and the script
 
-`scripts/play-nvidia.ps1` also takes `-Console S|X` (the Series X profile; `-SeriesX` keeps working), `-Upscaler fsr|dlss`, `-Preload` (`victory translate` and `victory warm` run first: the shaders are translated and their pipelines made before the game starts, minutes once, hitches gone after), `-CacheDir` and `-SavesDir` (`VICTORY_CACHE_DIR` and `VICTORY_SAVES_DIR`). `xenith.cmd` and `xenith-ui.cmd` reach all of them from `xenith.ini`.
+`scripts/play-nvidia.ps1` also takes `-Console S|X` (the Series X profile; `-SeriesX` keeps working), `-Upscaler fsr|dlss`, `-DlssDir` (`VICTORY_DLSS_DIR`), `-Preload` (`victory translate` and `victory warm` run first: the shaders are translated and their pipelines made before the game starts, minutes once, hitches gone after), `-CacheDir` and `-SavesDir` (`VICTORY_CACHE_DIR` and `VICTORY_SAVES_DIR`). `xenith.cmd` and `xenith-ui.cmd` reach all of them from `xenith.ini`; `xenith.cmd` picks up a `dlss\` folder next to itself as the DLSS folder by default.
+
+DLSS needs no files in the game's folder. The proxy and the NGX DLLs sit in their own folder (a `dlss\` next to the launchers, or anywhere `VICTORY_DLSS_DIR` names). Longer term the runtime itself routes the title's FSR dispatch through NGX, loading the libraries out of that same folder: the proxy then goes away and nothing sits beside the game at all.
 
 ## Taken from the forks the trackers rank
 

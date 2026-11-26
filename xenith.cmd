@@ -22,9 +22,16 @@ set "UPSCALER="
 set "PRELOAD=off"
 set "CACHE_DIR="
 set "SAVES_DIR="
+set "DLSS_DIR="
 set "NVIDIA_CARD="
 set "EXTRA_ADVICE="
 if exist "xenith.ini" for /f "usebackq tokens=1,* delims==" %%a in ("xenith.ini") do set "%%a=%%b"
+rem DLSS keeps its NVIDIA files outside the game's folder: a dlss folder of
+rem its own next to this launcher, holding nvngx*.dll, is picked up by default.
+if not defined DLSS_DIR if exist "dlss\nvngx*" set "DLSS_DIR=%~dp0dlss"
+rem A trailing backslash (drive roots, folders picked with one) breaks the
+rem quoted run arguments, so it goes.
+if defined DLSS_DIR if "!DLSS_DIR:~-1!"=="\" set "DLSS_DIR=!DLSS_DIR:~0,-1!"
 for /f "delims=" %%c in ('powershell -NoProfile -Command "Get-CimInstance Win32_VideoController | ForEach-Object { $_.Name }" 2^>nul') do call :found_card "%%c"
 
 if not defined GAME (
@@ -99,6 +106,7 @@ if /i "%UPSCALER%"=="dlss" set "ARGS=%ARGS% -Upscaler dlss"
 if /i "%PRELOAD%"=="on" set "RUN_PRELOAD=1"
 if defined CACHE_DIR set "ARGS=%ARGS% -CacheDir "%CACHE_DIR%""
 if defined SAVES_DIR set "ARGS=%ARGS% -SavesDir "%SAVES_DIR%""
+if defined DLSS_DIR set "ARGS=%ARGS% -DlssDir "%DLSS_DIR%""
 if defined RUN_PRELOAD set "ARGS=%ARGS% -Preload"
 if defined SKIP set "ARGS=%ARGS% -More @{VICTORY_SKIP_PIPELINES='%SKIP%'}"
 
@@ -120,10 +128,11 @@ echo    5  Ray tracing      %RAYTRACING%
 echo    6  Build            %BUILD%  (diag or release)
 echo    7  Skip pipelines   %SKIP%
 echo    8  Console          %CONSOLE%  (S is faster, X is the full output)
-echo    9  Upscaler         %UPSCALER%  (empty: FSR; dlss: a proxy DLL beside the game)
+echo    9  Upscaler         %UPSCALER%  (empty: FSR; dlss: its own DLSS folder, not the game's)
 echo   10  Preload shaders  %PRELOAD%
 echo   11  Cache folder     %CACHE_DIR%  (empty: the victory.toml pick)
 echo   12  Saves folder     %SAVES_DIR%  (empty: beside the persistent storage)
+echo   13  DLSS folder      %DLSS_DIR%  (empty: a dlss folder here with the NGX files)
 echo    0  Back
 echo.
 set "WHICH="
@@ -142,6 +151,7 @@ if "%WHICH%"=="9" call :ask UPSCALER "9 Upscaler fsr or dlss"
 if "%WHICH%"=="10" call :ask PRELOAD "10 Preload shaders on or off"
 if "%WHICH%"=="11" call :ask CACHE_DIR "11 Cache folder (a full path, empty: the default)"
 if "%WHICH%"=="12" call :ask SAVES_DIR "12 Saves folder (a full path, empty: the default)"
+if "%WHICH%"=="13" call :ask DLSS_DIR "13 DLSS folder (a full path where nvngx*.dll lives; empty: dlss here)"
 goto settings
 
 :found_card
@@ -158,5 +168,5 @@ if defined VALUE set "%~1=%VALUE%"
 goto :eof
 
 :save
-(for %%k in (GAME RESOLUTION ADAPTER QUALITY RAYTRACING BUILD SKIP UPSCALER CONSOLE PRELOAD CACHE_DIR SAVES_DIR) do echo %%k=!%%k!)>xenith.ini
+(for %%k in (GAME RESOLUTION ADAPTER QUALITY RAYTRACING BUILD SKIP UPSCALER CONSOLE PRELOAD CACHE_DIR SAVES_DIR DLSS_DIR) do echo %%k=!%%k!)>xenith.ini
 goto :eof

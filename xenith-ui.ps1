@@ -13,7 +13,7 @@ Add-Type -AssemblyName System.Windows.Forms
 # --- settings ------------------------------------------------------------
 
 $IniPath = Join-Path $PSScriptRoot 'xenith.ini'
-$Keys = @('GAME', 'RESOLUTION', 'ADAPTER', 'QUALITY', 'RAYTRACING', 'BUILD', 'SKIP', 'UPSCALER', 'CONSOLE', 'PRELOAD', 'CACHE_DIR', 'SAVES_DIR')
+$Keys = @('GAME', 'RESOLUTION', 'ADAPTER', 'QUALITY', 'RAYTRACING', 'BUILD', 'SKIP', 'UPSCALER', 'CONSOLE', 'PRELOAD', 'CACHE_DIR', 'SAVES_DIR', 'DLSS_DIR')
 
 function Read-Ini {
     $s = @{}
@@ -65,7 +65,7 @@ $script:HasNvidia = [bool]($script:Gpus | Where-Object { $_ -match 'NVIDIA|GeFor
 $Xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="XENITH VI for an RTX card" Height="820" Width="960"
+        Title="XENITH VI for an RTX card" Height="850" Width="960"
         MinWidth="820" MinHeight="640" WindowStartupLocation="CenterScreen"
         Background="#0B0E17" Foreground="#E7E9F5" FontFamily="Segoe UI" FontSize="13">
   <Window.Resources>
@@ -311,8 +311,8 @@ $Xaml = @'
           <TextBlock Grid.Column="0" Style="{StaticResource Label}" Text="Upscaler"/>
           <ComboBox Grid.Column="1" x:Name="CmbUpscaler" Width="340" HorizontalAlignment="Left" Margin="0,3" SelectedIndex="0">
             <ComboBoxItem Content="The title's own (FSR; the default)" Tag="fsr"/>
-            <ComboBoxItem Content="DLSS (a proxy DLL beside the game; see docs)" Tag="dlss"
-                           ToolTip="The title runs FSR; the proxy speaks FSR to it and DLSS to the driver. Put nvngx_dlss.dll and its NGX DLLs beside the game's exe (yours to supply, like the game files)."/>
+            <ComboBoxItem Content="DLSS (its own folder; see docs)" Tag="dlss"
+                           ToolTip="The title runs FSR; the proxy speaks FSR to it and DLSS to the driver. The NGX DLLs (nvngx*.dll, yours to supply) live in a folder of their own - never among the game's files. Name the folder below or with VICTORY_DLSS_DIR."/>
           </ComboBox>
         </Grid>
         <Grid Margin="0,4,0,0">
@@ -360,6 +360,16 @@ $Xaml = @'
                    ToolTip="Where the title's saves go (VICTORY_SAVES_DIR). Empty: beside the persistent local storage."/>
           <Button Grid.Column="2" x:Name="BtnSavesOpen" Content="Open" Margin="8,3,0,3"/>
           <Button Grid.Column="3" x:Name="BtnSavesPick" Content="Change..." Margin="8,3,0,3"/>
+        </Grid>
+        <Grid Margin="0,4,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="120"/><ColumnDefinition/><ColumnDefinition Width="86"/><ColumnDefinition Width="86"/>
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0" Style="{StaticResource Label}" Text="DLSS folder"/>
+          <TextBox Grid.Column="1" x:Name="TxtDlss" Margin="0,3"
+                   ToolTip="Where the NVIDIA NGX libraries (nvngx*.dll) live on their own (VICTORY_DLSS_DIR): not among the game's files. Empty: a dlss folder next to the launcher, or beside the game's exe."/>
+          <Button Grid.Column="2" x:Name="BtnDlssOpen" Content="Open" Margin="8,3,0,3"/>
+          <Button Grid.Column="3" x:Name="BtnDlssPick" Content="Change..." Margin="8,3,0,3"/>
         </Grid>
         <CheckBox x:Name="ChkPreload" Content="Preload shaders before Run (translate them and make their pipelines; minutes, once)"
                   Foreground="#E7E9F5" Margin="0,8,0,0" VerticalAlignment="Center"/>
@@ -446,6 +456,7 @@ $Win.FindName('CmbBuild').SelectedIndex = [Math]::Max(0, @('diag', 'release').In
 $Win.FindName('CmbConsole').SelectedIndex = [Math]::Max(0, @('S', 'X').IndexOf($S['CONSOLE'].ToUpper()))
 $Win.FindName('TxtCache').Text = $S['CACHE_DIR']
 $Win.FindName('TxtSaves').Text = $S['SAVES_DIR']
+$Win.FindName('TxtDlss').Text = $S['DLSS_DIR']
 $Win.FindName('ChkPreload').IsChecked = ($S['PRELOAD'] -ieq 'on')
 if ($S['UPSCALER'] -ieq 'dlss') { $Win.FindName('CmbUpscaler').SelectedIndex = 0 }
 $Win.FindName('CmbRt').SelectedIndex = 0
@@ -474,6 +485,7 @@ function Collect-Settings {
     $S['PRELOAD'] = $(if ($Win.FindName('ChkPreload').IsChecked) { 'on' } else { 'off' })
     $S['CACHE_DIR'] = $Win.FindName('TxtCache').Text.Trim()
     $S['SAVES_DIR'] = $Win.FindName('TxtSaves').Text.Trim()
+    $S['DLSS_DIR'] = $Win.FindName('TxtDlss').Text.Trim()
     $S['QUALITY'] = $(if ($Win.FindName('ChkQuality').IsChecked) { 'on' } else { 'off' })
     $S['RAYTRACING'] = $(if ($Win.FindName('ChkRay').IsChecked) { 'on' } else { 'off' })
     $S['RESOLUTION'] = $resTags[$Win.FindName('CmbRes').SelectedIndex]
@@ -520,8 +532,10 @@ function Open-Folder {
 
 $Win.FindName('BtnCachePick').Add_Click({ Pick-Folder 'TxtCache' })
 $Win.FindName('BtnSavesPick').Add_Click({ Pick-Folder 'TxtSaves' })
+$Win.FindName('BtnDlssPick').Add_Click({ Pick-Folder 'TxtDlss' })
 $Win.FindName('BtnCacheOpen').Add_Click({ Open-Folder 'TxtCache' })
 $Win.FindName('BtnSavesOpen').Add_Click({ Open-Folder 'TxtSaves' })
+$Win.FindName('BtnDlssOpen').Add_Click({ Open-Folder 'TxtDlss' })
 
 $Win.FindName('BtnSave').Add_Click({
     Collect-Settings
@@ -558,6 +572,7 @@ function Start-Run {
     if ($S['PRELOAD'] -ieq 'on') { $argList.Add('-Preload') }
     if ($S['CACHE_DIR']) { $env:VICTORY_CACHE_DIR = $S['CACHE_DIR'] }
     if ($S['SAVES_DIR']) { $env:VICTORY_SAVES_DIR = $S['SAVES_DIR'] }
+    if ($S['DLSS_DIR']) { $env:VICTORY_DLSS_DIR = $S['DLSS_DIR'] }
 
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = 'powershell'
@@ -585,7 +600,8 @@ function Start-Run {
               ', upscaler ' + $S['UPSCALER'] + ', preload ' + $S['PRELOAD'])
     Log-Line ('adapter ' + $(if ($S['ADAPTER']) { $S['ADAPTER'] } else { 'auto' }) +
               ', cache ' + $(if ($S['CACHE_DIR']) { $S['CACHE_DIR'] } else { 'the default' }) +
-              ', saves ' + $(if ($S['SAVES_DIR']) { $S['SAVES_DIR'] } else { 'the default' }))
+              ', saves ' + $(if ($S['SAVES_DIR']) { $S['SAVES_DIR'] } else { 'the default' }) +
+              ', dlss ' + $(if ($S['DLSS_DIR']) { $S['DLSS_DIR'] } else { 'the default' }))
 }
 
 function Stop-Run {
