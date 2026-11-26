@@ -92,3 +92,45 @@ Checked with the tips of every fork named above and the upstream, fetched:
   last port ended at (`033be27`).
 - **DoubleGhosty/cool_fox**: nothing new; everything of it stays in the tree.
 
+
+## Sweep of the fork network (after the conflict-marker fix)
+
+Upstream `842b0cb` -> `63bcca4`, fxceless `f6a09d3` -> `ceb9e1f`, the rest of
+the standing forks unchanged. Both trackers re-read the same day
+(portwatch-vi.xyz and gta6recomp.com/repo).
+
+- **Marvisak/VIctory**: `63bcca4` is a README update only. Nothing to port.
+- **fxceless/victory-fork** landed two performance commits (`06702fe`,
+  `ceb9e1f`), measured on their machine:
+  - The **BC7 rotation fix** (upstream VIctory `#3111`: a channel rotation
+    exists only in modes 4 and 5; ours applied the field to every mode, so
+    garbage bits in other modes' control codes corrupted channel precisions)
+    IS ported now, with their test, which passes here.
+  - Their **dispatch spread across z** is declined: it keeps the 65,535
+    groups cap and folds the rows through the z dimension; this tree lifts
+    the cap on RTX directly (`widest`, the vendor-aware indirect window),
+    which passed our measurements, and adding a second wide-dispatch shape
+    invites bugs no one here can test.
+  - Their **flight-room, texture-checks-on-helper-threads and view-heap
+    timing** work stays declined, as the heap worker before it: 1,700 lines
+    into a torn/host line ours rebuilt long ago, unverifiable in this
+    sandbox.
+- **soldsawn/victory-nvidia-8gb**: nothing new since the last sweep.
+- **Newly spotted by PortWatch**:
+  - `GiovannaSGuerrera/Victory-RTX2080`: a separate snapshot line ("Series
+    S mode on NVIDIA 8 GB cards and older CPUs"), six commits, mostly docs
+    and scripts, one opt-in heap-pass change - built on `heap_pass.rs`,
+    machinery ours never had. Nothing portable; its measurement habit
+    (a local usage capture script) is worth copying later.
+  - `Dolberthi/neptune-dolberth-nvidia-8gb`: another separate snapshot
+    line with real 8 GB fixes: wider texture-queue room and DirectStorage
+    staging, F11/Alt+Enter borderless, and a revert of a half-views patch
+    that stretched faces. Their texture-eviction deadlock fix names a
+    `slot_evict` this tree does not have: our sweep holds the textures
+    lock, but nothing inside it re-locks that mutex, so the bug's shape is
+    not here. Nothing portable today.
+- **The boards**: cool_fox (the DoubleGhosty mirror) holds the lead on both
+  at about 25 FPS on NVIDIA, gameplay reported stable; this tracker entry
+  (`trustno1-coder/VIctory-NVIDIA`, the source of our line) sits at 29 %,
+  ranked tenth on gta6recomp. PortWatch's Nov 26 note says the original
+  codec-d/cool_fox went 404 again - the mirrors hold the code.
