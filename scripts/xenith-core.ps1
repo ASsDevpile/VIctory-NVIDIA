@@ -26,6 +26,7 @@ $script:XenithDefaults = @{
     SAVES_DIR   = ''
     DLSS_DIR    = ''
     LOG_DIR     = ''
+    LOG_LEVEL   = 'info'
 }
 
 function Get-XenithRepo {
@@ -160,7 +161,9 @@ function Start-XenithRun {
     New-Item -ItemType Directory -Force -Path $logDir | Out-Null
     $logFile = Join-Path $logDir ("victory-run-" + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.log')
     Get-ChildItem Env:VICTORY_* -ErrorAction SilentlyContinue | ForEach-Object { Remove-Item ("Env:" + $_.Name) -ErrorAction SilentlyContinue }
-    $env:VICTORY_LOG = 'debug'
+    $logLevel = $cfg.LOG_LEVEL
+    if (-not $logLevel) { $logLevel = 'info' }
+    $env:VICTORY_LOG = $logLevel.ToLowerInvariant()
     foreach ($k in $setup.settings.Keys) { Set-Item ("Env:" + $k) $setup.settings[$k] }
     $sm = Join-Path (Split-Path $exe) 'victory_sm.exe'
     if (-not (Test-Path $sm) -or (Get-Item $sm).LastWriteTime -lt (Get-Item $exe).LastWriteTime) {

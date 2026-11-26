@@ -40,6 +40,7 @@ A front end consumes it in one of two ways and must not bypass it:
 | `CONSOLE` | `S` (1080p out) or `X` (2160p out) |
 | `PRELOAD` | `on` = translate + warm before every launch (minutes, once) |
 | `CACHE_DIR`, `SAVES_DIR`, `DLSS_DIR`, `LOG_DIR` | where those live; empty = defaults |
+| `LOG_LEVEL` | how much the runtime logs during a run: `info` (the default, cheap), `debug` (the per-frame diagnostics spam; measurable fps) or `trace`; the white-screen probes need `debug` |
 
 ## Commands
 
