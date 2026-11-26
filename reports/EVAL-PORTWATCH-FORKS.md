@@ -206,3 +206,62 @@ window tracks the forced-upscaler path, and with the title's FSR in charge
 the run dies in seconds on an unimplemented command-queue method (slot
 `0xb8`), the same allocation-shape wall the DLSS round hit from the other
 side.
+
+
+## The perf round: the tracker's standings, and renderer port 5
+
+Five to ten FPS with the launcher turned out to have a cause of our own first:
+the launcher's back end forced `VICTORY_LOG=debug` on every run (the
+command-line play script never did), so each frame printed a full resource
+description for every texture a shader reads - half a gigabyte of formatted
+lines in a nine-minute run. Runs now log at `info` unless `LOG_LEVEL` says
+otherwise, and the per-frame texture line only exists at `trace`.
+
+Then the whole network was swept again, this time by the names the
+[recomp race tracker](https://gta6recomp.com/repo) uses (several of our old
+sweep names 404: the repos live under different owners), and the tracker's
+standings as of today:
+
+- CGBJ (cool_fox) 58% - 25 FPS avg on NVIDIA, 80% story (mirror at
+  DoubleGhosty/cool_fox)
+- avatarmanz/VIctory-7900XTX 55% - 19-22 FPS boat mission, faster preparing
+  and texture read-back
+- Belobug 50% (AMD; indirect light stand-in, heavy scenes 225 ms -> 80 ms)
+- Vice-Tay 45% (CGBJ's code on an RTX 4090, 15.2 FPS mean over 56 minutes)
+- Hyphen (fxceless/victory-fork) 35.5% - freeze-free map ride on NVIDIA
+- our line (VIctory-NVIDIA) 29% - about 20-22 FPS Series S half-scale on an
+  RTX 5070
+
+Ported this round, both opt-in and off by default:
+
+- **Renderer port 5** (`VICTORY_PORT_CBV=1`), avatarmanz's measurement
+  carried by cool_fox (`fad4e53`): translated shaders read constant buffers
+  as raw bytes through their twins in the title's own memory instead of the
+  per-submission copies - about 23,000 copies a frame of the city, ~9 MB,
+  gone to zero when the switch is on. The shader cache keys on the switch.
+  Ported with three small conflicts resolved (our `refresh_in_runs` cache
+  call, our `port` module names, our wider re-export list, which keeps
+  `constant_marks` and gains `constants_raw`).
+- **trustno1-coder's paired-wave diagnostics** (`f110b57`,
+  `VICTORY_PAIRED_SHADER_DIR`): diagnostics builds may load matching paired
+  Wave32 bytecode when the normal translation confirms the bindings.
+  Their other new commit (`fdc8bbc`, buffer comparisons back inside the GPU
+  timings) reworks the same check-submit path this tree just rewrote its own
+  way (Timed::Compare retired in the fork-sweep round); parked, not needed
+  for speed.
+
+Also on the shelf from this sweep, in the order the tracker makes them
+interesting:
+
+- avatarmanz's renderer ports 6 and 7 (`VICTORY_PORT_GUARD=1`,
+  `VICTORY_PORT_JOURNAL=1`): 47.2 -> 45.1 ms measured on the 7900 XTX;
+  additive, opt-in, but each touches the guard/journal internals this tree
+  grew separately - port one at a time, measured.
+- cool_fox's frame-rate switches (`VICTORY_FRAME_INTERVAL_MS`,
+  `VICTORY_OUTPUT`): uncaps/retimes the title's 30 fps limiter; byte-checked
+  offsets, off by default.
+- shadowdog00/rorodev6's faster card-copy hashing (64 threads, a kilobyte
+  each) and pooled GPU memory: worth a measurement round against our card
+  steps.
+- soldsawn's `VICTORY_TEXTURE_DROP_MIPS=2`: the 8 GB VRAM fit lever; only
+  matters if the card spills (the 3060's 12 GB probably does not).
