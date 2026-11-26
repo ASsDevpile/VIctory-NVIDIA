@@ -1,5 +1,8 @@
 # What was learned on the RX 7900 XTX (2026-11-23 to 2026-11-25)
 
+Everything here was measured on the Radeon. What the port to RTX cards makes
+of the same code is in [rtx.md](rtx.md).
+
 One PC: i9-12900K (8 fast cores, 8 slow ones, 24 threads), 64 GB, Radeon RX 7900 XTX
 24 GB, Windows 11, 1440p, Series X profile. Figures are of diagnostics builds with a
 screenshot a second. Scenes are not the same from run to run, so read differences

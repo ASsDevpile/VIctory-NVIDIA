@@ -1,4 +1,4 @@
-# VIctory on an RX 7900 XTX
+# VIctory on an RTX card
 
 A fork of [VIctory](https://github.com/Marvisak/VIctory), a compatibility layer
 that runs an Xbox Series title natively on Windows from files the user supplies.
@@ -6,8 +6,10 @@ that runs an Xbox Series title natively on Windows from files the user supplies.
 ## The goal
 
 **A stable 30 fps or more without ray tracing, then as high a frame rate and as
-low frame times as the PC allows**, on an AMD RX 7900 XTX first and on PCs with
-32 GB (later 16 GB) of RAM.
+low frame times as the PC allows**, on NVIDIA RTX cards first and on PCs with
+32 GB (later 16 GB) of RAM. The work before this one was done on an AMD RX
+7900 XTX; what the port to RTX changes and what is still to be measured there
+is in [docs/rtx.md](docs/rtx.md).
 
 The way there is **porting, not emulating**: patching the title's renderer so it
 behaves the way a PC renderer does, rather than having the layer watch and copy
@@ -22,17 +24,26 @@ or publisher.
 
 ## Where it stands (2026-11-26)
 
-Tested on one machine only: Windows 11, Intel i9-12900K, 64 GB RAM, Radeon
-RX 7900 XTX, the Series X profile, ray tracing off.
+The card figures below are of the AMD build, the one machine it was tested on:
+Windows 11, Intel i9-12900K, 64 GB RAM, Radeon RX 7900 XTX, the Series X
+profile, ray tracing off. On RTX they are not measured yet (nor has anything
+here been known to hang one); the Radeon table is kept until RTX numbers are.
 
-| | |
+On RTX, tests of this repository that make D3D12 devices run on any hardware
+that answers (WARP included): the translator's waves of 32, the clamped view
+heaps and the every-thread group barriers are what an RTX card asks for, and
+the path an RTX card takes is the one those tests exercise.
+
+| RX 7900 XTX | |
 |---|---|
 | City street, renderer patches 1+2 on | about 53 ms a frame (about 19 fps) |
 | Same scene before the patches | 57-75 ms (13-17 fps) |
 | Shaders the title uses that translate | all of them (25,790 of 25,985; the rest are unused geometry shaders) |
 | Memory | about 35 GB of private memory: **64 GB of RAM recommended** for now |
 
-It started at 280 ms a frame in the same scenes three days earlier.
+It started at 280 ms a frame in the same scenes three days earlier. On RTX the
+title's traces need the same 35 GB of RAM; the card's part of the shared memory
+is set by `VICTORY_MEMORY_CARD_MB` (4,096 MB, sized for a 24 GB card).
 
 ### Renderer patches (off by default while they are tested)
 
@@ -50,6 +61,8 @@ What is known to be wrong:
 - The first run of a new build stutters while the driver makes pipelines
   (`victory warm` makes them ahead).
 - Recording a frame in the world makes the title's own watchdog end it.
+- On RTX, tile lists past 65,535 groups run as asked now ([docs/rtx.md](docs/rtx.md));
+  when the card cuts them instead, patches of the picture go blocky again.
 
 ## How to run it
 
@@ -58,8 +71,8 @@ model 6.6 and mesh shaders, Rust (the toolchain is pinned), the MSVC build
 tools, and your own dump of the title.
 
 ```powershell
-git clone https://github.com/avatarmanz/VIctory-7900XTX
-cd VIctory-7900XTX
+git clone https://github.com/ASsDevpile/VIctory-NVIDIA
+cd VIctory-NVIDIA
 copy victory.example.toml victory.toml      # then set your paths, outside this folder
 cargo build --locked --profile diag -p victory --features diagnostics
 scripts\play.ps1 -Exe <path of your copy's executable>
@@ -73,7 +86,10 @@ high-performance adapter with Shader Model 6.6. The runtime logs its adapter
 name, PCI vendor and device IDs, and dedicated VRAM. Set
 `VICTORY_D3D12_ADAPTER` to a zero-based DXGI index or part of the adapter's
 name to select it explicitly. With the launcher, pass
-`-More @{VICTORY_D3D12_ADAPTER='NVIDIA'}`.
+`-More @{VICTORY_D3D12_ADAPTER='NVIDIA'}`. On an RTX card nothing needs
+turning: the console's wave64 programs are translated for the card's waves of
+32, the float rules of the console's own hardware stay off, and view heaps
+stay under the heap size the driver takes ([docs/rtx.md](docs/rtx.md)).
 
 Before the first run, ahead of time (both can be stopped and go on later):
 
