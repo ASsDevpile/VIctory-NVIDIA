@@ -3854,7 +3854,8 @@ fn late_line(frames: f64) {
         );
     }
     card_steps::log(frames);
-    crate::port::log(frames);
+crate::port::log(frames);
+    crate::port_cbv::log(frames);
     crate::picked::log(frames);
     #[cfg(feature = "diagnostics")]
     log_blame(frames);
