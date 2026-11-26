@@ -234,6 +234,9 @@
       <tr><td><code>VICTORY_PIPELINE_WAIT_ONCE=0</code></td><td>a pipeline past its wait budget waits again every frame, as before</td></tr>
       <tr><td><code>VICTORY_MEMORY_CARD_MB</code></td><td>the most of title memory on the card (4,096)</td></tr>
       <tr><td><code>VICTORY_D3D12_ADAPTER</code></td><td>which card makes the device (name part or index)</td></tr>
+      <tr><td><code>VICTORY_UPSCALER=dlss</code></td><td>the title runs its FSR path and a DLSS proxy DLL beside the game speaks DLSS to the driver (the proxy is yours to supply)</td></tr>
+      <tr><td><code>VICTORY_SAVES_DIR</code></td><td>where the title's saves live, instead of the data folder</td></tr>
+      <tr><td>shader preload</td><td><code>victory translate</code> and <code>victory warm</code> before a run (or the launcher's preload tick): no first-seen-places hitches</td></tr>
     </table>
     <p style="color: var(--muted); font-size: 15px;">…and more, each documented in a comment where it is read;
     <a href="https://github.com/ASsDevpile/VIctory-NVIDIA/blob/main/docs/rtx.md">docs/rtx.md</a> keeps the RTX table.</p>

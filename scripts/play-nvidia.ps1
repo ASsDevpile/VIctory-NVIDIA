@@ -10,6 +10,17 @@
 #                  1080 on X). The play-S-*.ps1 and play-X-*.ps1 scripts next to this one call it with each.
 # -Adapter         on a PC with more than one card, the one to use: part of its name (-Adapter 5060) or its index
 #                  (-Adapter 1). Default: the fastest card (VICTORY_D3D12_ADAPTER, DXGI's GPU preference order).
+# -Console         Series S (the default, faster) or Series X (slower, full output); -SeriesX is the
+#                  same as -Console X.
+# -Upscaler        fsr (the default: the title's FSR) or dlss: the title runs its FSR path, and a DLSS proxy
+#                  DLL beside the game speaks FSR to it and DLSS to the driver (VICTORY_UPSCALER; the proxy
+#                  and its NGX DLLs are yours to place, like the rest of the NVIDIA files).
+# -Preload         translate the title's shaders into the cache and make their pipelines before the run
+#                  (minutes, once): the run then starts without the first-seen-places hitches.
+# -CacheDir        where the runtime keeps its derived files (shader translations, pipelines, images)
+#                  instead of the cache folder of victory.toml (VICTORY_CACHE_DIR).
+# -SavesDir        where the title's saves live, instead of beside the persistent local storage in the data
+#                  folder (VICTORY_SAVES_DIR).
 # -Build           target\diag (the default, the build all measurements are of) or target\release
 #                  (the release build ignores the ray-tracing skip list: VICTORY_SKIP_PIPELINES is a diagnostics switch)
 # -More            other settings: -More @{VICTORY_PANEL='1'}
@@ -18,13 +29,19 @@ param(
     [Parameter(Mandatory)][string]$Exe,
     [switch]$NoSmoothMotion,
     [switch]$SeriesX,
+    [ValidateSet('S', 'X')][string]$Console = 'S',
     [switch]$Quality,
     [switch]$RayTracing,
     [ValidateSet('2160', '1440', '1080', '720', '540', '480')][string]$Resolution,
     [string]$Adapter,
+    [ValidateSet('fsr', 'dlss')][string]$Upscaler,
+    [switch]$Preload,
+    [string]$CacheDir,
+    [string]$SavesDir,
     [ValidateSet('diag', 'release')][string]$Build = 'diag',
     [hashtable]$More = @{}
 )
+$seriesX = $SeriesX -or $Console -eq 'X'
 $settings = @{
     # This fork's play set (scripts\play.ps1, not -Safe): the speed set.
     VICTORY_TEXTURE_NO_WAIT = '1'; VICTORY_RELAY = '2'; VICTORY_CARD_STEPS = '2'
@@ -71,8 +88,9 @@ if ($Quality) {
     $settings.VICTORY_RELAY = '1'; $settings.VICTORY_CARD_STEPS = '0'; $settings.VICTORY_TEXTURE_NO_WAIT = '0'
 }
 # The render scale is the rendered height over the output height (Series S 1080, Series X 2160).
-$outHeight = if ($SeriesX) { 2160 } else { 1080 }
-$console = if ($SeriesX) { 'X' } else { 'S' }
+if ($Upscaler) { $settings.VICTORY_UPSCALER = $Upscaler.ToLowerInvariant() }
+$outHeight = if ($seriesX) { 2160 } else { 1080 }
+$console = if ($seriesX) { 'X' } else { 'S' }
 if ($Resolution) {
     if ([int]$Resolution -gt $outHeight) {
         Write-Host "Series $console outputs ${outHeight}p: ${Resolution}p is above it."
@@ -97,11 +115,19 @@ if (-not $NoSmoothMotion) {
     $victory = $sm
 }
 # (Other settings left over in this window go; where your files are stays.)
-$paths = 'VICTORY_CONFIG', 'VICTORY_GAME_DIR', 'VICTORY_CACHE_DIR', 'VICTORY_DATA_DIR'
+if ($CacheDir) { $env:VICTORY_CACHE_DIR = $CacheDir }
+if ($SavesDir) { $env:VICTORY_SAVES_DIR = $SavesDir }
+$paths = 'VICTORY_CONFIG', 'VICTORY_GAME_DIR', 'VICTORY_CACHE_DIR', 'VICTORY_DATA_DIR', 'VICTORY_SAVES_DIR'
 Get-ChildItem Env:VICTORY_* | Where-Object { $_.Name -notin $paths } | ForEach-Object { Remove-Item "Env:$($_.Name)" }
 foreach ($k in $settings.Keys) { Set-Item "Env:$k" $settings[$k] }
 $Exe = (Resolve-Path $Exe).Path
+if ($Preload) {
+    $env:VICTORY_GAME_DIR = Split-Path $Exe
+    Write-Host 'preload: translating the shaders and making the pipelines they first ask for (minutes, once)'
+    & $victory translate
+    & $victory warm
+}
 $runArgs = @('run', $Exe, '--execute')
-if (-not $SeriesX) { $runArgs += @('--console', 'series-s') }
+if (-not $seriesX) { $runArgs += @('--console', 'series-s') }
 Push-Location (Join-Path $PSScriptRoot '..')   # victory.toml is looked for here
 try { & $victory @runArgs } finally { Pop-Location }

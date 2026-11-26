@@ -67,3 +67,28 @@ From `soldsawn/victory-nvidia-8gb` and `fxceless/victory-fork`:
 - Parked unmapped watch blocks (e277b98), `VICTORY_TEXTURE_NO_WAIT` and the
   rest of its watch rework: same reason, the branch's watch code ours grew
   past.
+
+## Sweep of the fork network (the DLSS round)
+
+Checked with the tips of every fork named above and the upstream, fetched:
+
+- **Marvisak/VIctory** (the upstream): two new GPU commits, `842b0cb` (the
+  depth bounds test reaches the host, pull request 158) and `219878a` (a null
+  shader view has no alias source). Both are follow-ups to machinery ours
+  never had (upstream's texture-alias tables and a pipeline host ours rebuilt
+  five hundred commits ago): not portable without taking that machinery too.
+  The depth bounds port is a candidate for a later deliberate job.
+- **fxceless/victory-fork**: nothing new past `f6a09d3`, already evaluated
+  (its texture worker measures +40 % of world frames on their machine, but the
+  heap worker stays a fork-line we cannot verify here). `6a42ed2`, a small
+  saves fix, IS ported now: an older save version another program holds open
+  (a virus scanner, a backup) no longer makes the container unreadable.
+- **soldsawn/victory-nvidia-8gb**: three new commits, all meta for their 8 GB
+  variant (their overlay's footer credit, their launcher, their README), plus
+  their merge of fxceless pull request 999 (`VICTORY_TEXTURE_BACK`), which
+  this tree already carries in `texback.rs` - with the water formats on by
+  default, where theirs are off.
+- **trustno1-coder/VIctory-NVIDIA**: nothing new; its tip is the commit our
+  last port ended at (`033be27`).
+- **DoubleGhosty/cool_fox**: nothing new; everything of it stays in the tree.
+
