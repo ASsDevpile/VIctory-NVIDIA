@@ -25,6 +25,8 @@
 #                  folder (VICTORY_SAVES_DIR).
 # -Build           target\diag (the default, the build all measurements are of) or target\release
 #                  (the release build ignores the ray-tracing skip list: VICTORY_SKIP_PIPELINES is a diagnostics switch)
+# -WindowsBarMB    maximum MiB of title memory windows in CPU-mapped VRAM (by default 3072 on PCs with under
+#                  24 GB of RAM, else 0; -WindowsBarMB 0 turns it off).
 # -More            other settings: -More @{VICTORY_PANEL='1'}
 # Run it from a normal window, not as administrator: the driver then keeps its shader cache elsewhere.
 param(
@@ -42,6 +44,7 @@ param(
     [string]$CacheDir,
     [string]$SavesDir,
     [ValidateSet('diag', 'release')][string]$Build = 'diag',
+    [int]$WindowsBarMB,
     [hashtable]$More = @{}
 )
 $seriesX = $SeriesX -or $Console -eq 'X'
@@ -102,6 +105,15 @@ if ($Resolution) {
     $settings.VICTORY_RENDER_SCALE = ([int]$Resolution / $outHeight).ToString('0.####', [Globalization.CultureInfo]::InvariantCulture)
 }
 if ($Adapter) { $settings.VICTORY_D3D12_ADAPTER = $Adapter }
+if ($PSBoundParameters.ContainsKey('WindowsBarMB')) {
+    $settings.VICTORY_WINDOWS_BAR_MB = $WindowsBarMB.ToString([Globalization.CultureInfo]::InvariantCulture)
+} else {
+    $ram = try { (Get-CimInstance Win32_ComputerSystem -ErrorAction Stop).TotalPhysicalMemory } catch { 0 }
+    if ($ram -gt 0 -and $ram -lt 24GB) {
+        $settings.VICTORY_WINDOWS_BAR_MB = '3072'
+        Write-Host "$([math]::Round($ram / 1GB)) GB of RAM: title memory windows in card memory the CPU maps, up to 3 GB (-WindowsBarMB 0 turns this off)"
+    }
+}
 foreach ($k in $More.Keys) { $settings[$k] = $More[$k] }
 $scale = [double]::Parse($settings.VICTORY_RENDER_SCALE, [Globalization.CultureInfo]::InvariantCulture)
 Write-Host "Series $console, rendering at $([int]($outHeight * $scale))p (render scale $($settings.VICTORY_RENDER_SCALE))"

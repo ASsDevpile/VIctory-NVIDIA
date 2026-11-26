@@ -295,3 +295,27 @@ rorodev6 `8604369`, Marvisak `63bcca4`, soldsawn `c09a44e`).
   usage by kind): probe-grade, no speed; parked.
 - **cool_fox's two port-1 commits**: already this tree's port 1, address
   order included (`xmem.rs` carries the same slices-in-address-order run).
+
+## The 2026-11-26 live tip sweep
+
+Checked again after the morning-after sweep; five named tips moved:
+
+- **trustno1-coder** `02a47cd` -> `85a529b`: low-memory launcher and 16 GB
+  BAR fixes are now in the launch surfaces. The runtime switch
+  `VICTORY_WINDOWS_BAR_MB=3072` is selected automatically for systems below
+  24 GB of RAM, and `0` or a configuration value can turn or tune it.
+- **cool_fox** `ab113ff` -> `3277b15`: port 5 and port 1 are already in this
+  tree; a later commit only enables those switches by default in that fork,
+  so it is declined here because all Victory switches stay opt-in or are
+  explicitly mirrored elsewhere.
+- **fxceless** `e4245f3` -> `52ac4ec`: the cache collision and pipeline
+  lifetime changes overlap machinery already here or conflicted with newer
+  local structure. Its split-submission slot fix is ported now: a split
+  submission releases descriptor-table slots after both host command-list
+  halves execute. The alias pin and pipeline-panic follow-ups remain
+  parked where they require machinery not present here.
+- **avatarmanz** `c9c932c`: unchanged; ports 6 and 7 stay one-at-a-time
+  watchlist items, with Windows measurement required.
+- **upstream, rorodev6 and soldsawn**: no code move beyond already-recorded
+  tips. Separate 8 GB texture and DirectStorage work stays declined for a
+  12 GB RTX 3060 card.
