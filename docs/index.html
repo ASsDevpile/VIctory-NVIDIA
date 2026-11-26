@@ -120,7 +120,12 @@
       <a href="#about">About</a>
       <a href="#port">The RTX port</a>
       <a href="#start">Getting started</a>
+      <a href="#launchers">Launchers</a>
+      <a href="#console">Debug console</a>
+      <a href="#dlss">DLSS</a>
+      <a href="#preload">Preload</a>
       <a href="#switches">Switches</a>
+      <a href="#troubleshooting">Troubleshooting</a>
       <a href="#legal">Legal</a>
       <a href="https://github.com/ASsDevpile/VIctory-NVIDIA">GitHub</a>
     </nav>
@@ -219,6 +224,106 @@
   </div>
 </section>
 
+<section id="launchers">
+  <div class="wrap">
+    <h2>The <span class="grad">launchers</span></h2>
+    <p>Both Xenith copies keep their choices in <code>xenith.ini</code> next to themselves;
+    they are a special copy of <a href="https://github.com/ASsDevpile/XenithVI">Xenith VI's</a>
+    launcher, changed for this fork. The runtime keeps none of it.</p>
+    <div class="cards">
+      <div class="card">
+        <h3><code>xenith.cmd</code> — the menu</h3>
+        <p>A numbered console menu: play in every mode, settings, the shader preload.
+        The NVIDIA card is found on its own, and the settings live beside Xenith's own
+        in <code>xenith.ini</code> (thirteen items, the DLSS folder among them).</p>
+      </div>
+      <div class="card">
+        <h3><code>xenith-ui.cmd</code> — the window</h3>
+        <p>A dark desktop window: the run's settings on cards, the adapter picked on
+        its own, the cache, saves and DLSS folders on rows of their own, and a
+        <strong>Console tab</strong> with the run's log, a command line and
+        <a href="#console">log saving</a>.</p>
+      </div>
+      <div class="card">
+        <h3>the script, directly</h3>
+        <p>Both Xenith copies call <code>scripts\play-nvidia.ps1</code> under the
+        hood; you can call it yourself, with every switch it takes:</p>
+      </div>
+    </div>
+    <table class="grid" style="margin-top: 18px;">
+      <tr><th>Script switch</th><th>Does</th></tr>
+      <tr><td><code>-Exe</code></td><td>required: the path of your own copy's <code>game_*.exe</code></td></tr>
+      <tr><td><code>-Console S|X</code></td><td>the Series S profile (the default, faster) or the Series X one (<code>-SeriesX</code> is the same as <code>-Console X</code>)</td></tr>
+      <tr><td><code>-Resolution</code></td><td>the render height before the title's upscaler: 2160, 1440, 1080, 720, 540 or 480. Default: half the output</td></tr>
+      <tr><td><code>-Adapter</code></td><td>on more than one card, which one: part of its name or its index. Default: the fastest</td></tr>
+      <tr><td><code>-Quality</code></td><td>fewer stretched bodies and less rainbow skin, at fewer frames</td></tr>
+      <tr><td><code>-RayTracing</code></td><td>keep the title's ray-tracing passes (off by default)</td></tr>
+      <tr><td><code>-Upscaler</code></td><td><code>fsr</code> (the title's own) or <code>dlss</code> — see <a href="#dlss">the DLSS folder</a></td></tr>
+      <tr><td><code>-DlssDir</code></td><td>where the NGX libraries live on their own (<code>VICTORY_DLSS_DIR</code>)</td></tr>
+      <tr><td><code>-Preload</code></td><td>translate and warm before the run — see <a href="#preload">the preload</a></td></tr>
+      <tr><td><code>-CacheDir</code> / <code>-SavesDir</code></td><td>the derived files, and the saves, somewhere of your choosing</td></tr>
+      <tr><td><code>-Build</code></td><td><code>diag</code> (the default, all measurements are of it) or <code>release</code> (ignores the skip list: a diagnostics switch)</td></tr>
+      <tr><td><code>-NoSmoothMotion</code></td><td>start <code>victory.exe</code> itself, instead of the <code>victory_sm.exe</code> copy a Smooth Motion profile can be set for</td></tr>
+      <tr><td><code>-More</code></td><td>anything else by name: <code>-More @{VICTORY_PANEL='1'}</code></td></tr>
+    </table>
+  </div>
+</section>
+
+<section id="console">
+  <div class="wrap">
+    <h2>The debug <span class="grad">console</span>, in the window launcher</h2>
+    <p>The Console tab of <code>xenith-ui.cmd</code> shows the run's log as it is
+    written, and answers a few typed commands of its own (click Run or press Enter):</p>
+    <table class="grid">
+      <tr><th>Command</th><th>Does</th></tr>
+      <tr><td><code>help</code></td><td>lists the commands</td></tr>
+      <tr><td><code>play</code> / <code>stop</code></td><td>starts the run with the settings on the cards / ends it</td></tr>
+      <tr><td><code>status</code></td><td>the settings, the victory environment, and whether a run is alive</td></tr>
+      <tr><td><code>cards</code></td><td>the cards the machine has, and which the run would pick</td></tr>
+      <tr><td><code>open cache</code> (also <code>saves</code>, <code>dlss</code>, <code>game</code>, <code>log</code>)</td><td>the named place in Explorer</td></tr>
+      <tr><td><code>save &lt;path&gt;</code></td><td>writes the log to the full path you name — any folder, any name</td></tr>
+      <tr><td><code>clear</code></td><td>empties the box</td></tr>
+    </table>
+    <p style="margin-top: 14px;">Saving works three more ways, all to any location:</p>
+    <ol class="steps">
+      <li><strong>Save log…</strong> — a file dialog opens; the default name carries the time, <code>victory-run-yyyyMMdd-HHmmss.log</code>, and the folder is yours.</li>
+      <li><strong>auto</strong> — a checkbox: give the console a log folder and the log is written into it as <code>victory-run-…log</code> as soon as the run exits, with no click from you.</li>
+      <li><strong>copy</strong> — the log on the clipboard, to paste wherever.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="dlss">
+  <div class="wrap">
+    <h2>DLSS, in a <span class="grad">folder of its own</span></h2>
+    <p>The title's FSR is baked into its executable, so nothing of the game is
+    touched: the run keeps the FSR path and a DLSS proxy speaks FSR to the title
+    and DLSS to the driver. The proxy and its NGX libraries
+    (<code>nvngx*.dll</code> and friends) live <strong>away from the game's
+    files</strong>, in a folder of their own:</p>
+    <ol class="steps">
+      <li>Get the libraries on your own responsibility — NVIDIA NGX DLLs arrive with the driver, and tools such as DLSS Swapper or the OptiScaler project handle placing them.</li>
+      <li>Make a <code>dlss\</code> folder next to the launcher and put the DLLs in it. It is picked up on its own; or name any folder with <code>VICTORY_DLSS_DIR</code>, <code>-DlssDir</code>, or the launcher's DLSS row.</li>
+      <li>Set <code>VICTORY_UPSCALER=dlss</code> (the script's <code>-Upscaler dlss</code>, or window's upscaler list).</li>
+    </ol>
+    <p style="color: var(--muted); font-size: 15px;">The loader logs the folder it found. With none, the run falls back to the title's FSR.</p>
+  </div>
+</section>
+
+<section id="preload">
+  <div class="wrap">
+    <h2>The shader <span class="grad">preload</span></h2>
+    <p>The first minutes of a fresh run translate the title's shaders into the
+    cache as the places that hold them are first seen — the hitches. The preload
+    does the work before the run, once:</p>
+    <ol class="steps">
+      <li>The window's <strong>preload</strong> tick, the menu's item 7, or <code>-Preload</code> on the script.</li>
+      <li>It runs <code>victory translate</code> (the shaders into the cache) and then <code>victory warm</code> (the pipelines made) — minutes, once.</li>
+      <li>The result is kept in the cache folder (<code>VICTORY_CACHE_DIR</code>, the script's <code>-CacheDir</code>): the runs after start without the first-seen hitches.</li>
+    </ol>
+  </div>
+</section>
+
 <section id="switches">
   <div class="wrap">
     <h2>The <span class="grad">switches</span>, for an RTX card</h2>
@@ -241,6 +346,22 @@
     </table>
     <p style="color: var(--muted); font-size: 15px;">…and more, each documented in a comment where it is read;
     <a href="https://github.com/ASsDevpile/VIctory-NVIDIA/blob/main/docs/rtx.md">docs/rtx.md</a> keeps the RTX table.</p>
+  </div>
+</section>
+
+<section id="troubleshooting">
+  <div class="wrap">
+    <h2><span class="grad">Troubleshooting</span></h2>
+    <table class="grid">
+      <tr><th>Seen</th><th>Try</th></tr>
+      <tr><td>hitches as new places are first seen</td><td>run the <a href="#preload">preload</a> once (menu 7, <code>-Preload</code>, the window's tick); the cache keeps the result for the runs after</td></tr>
+      <tr><td>a ray pass hangs with ray tracing on</td><td><code>VICTORY_BVH_MISS=1</code>: the walks end at the root and miss instead. The <a href="#switches">skip list</a> leaves the passes out entirely</td></tr>
+      <tr><td>stretched bodies, rainbow skin, black blobs, overbright rooms</td><td>the quality patches (<code>-Quality</code>, the launchers' default). Leaving them off buys frames and costs picture</td></tr>
+      <tr><td>the wrong card of two picked</td><td><code>-Adapter</code> or <code>VICTORY_D3D12_ADAPTER</code> — part of the name or the index. The window's box lists what was found</td></tr>
+      <tr><td>a Smooth Motion profile that never applies</td><td>it must be set for <code>victory_sm.exe</code>, the copy the script starts by default (<code>-NoSmoothMotion</code> skips the copy)</td></tr>
+      <tr><td>the driver's shader cache behaving badly</td><td>run the launcher from a normal window, not as administrator: the driver keeps its cache elsewhere then</td></tr>
+      <tr><td>saves in the wrong place</td><td><code>VICTORY_SAVES_DIR</code> or <code>-SavesDir</code> — where the title's saves live instead of the data folder</td></tr>
+    </table>
   </div>
 </section>
 
