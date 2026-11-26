@@ -361,7 +361,7 @@ fn toggle_borderless(hwnd: HWND, key: WPARAM, alt_may_be_down: bool) -> bool {
             // back to the rimmed window and its old place
             wm::RemovePropW(hwnd, SAVED_WINDOW);
             let saved = Box::from_raw(saved);
-            wm::SetWindowLongPtrW(hwnd, wm::GWL_STYLE, isize::from(saved.style));
+            wm::SetWindowLongPtrW(hwnd, wm::GWL_STYLE, saved.style as isize);
             wm::SetWindowPos(
                 hwnd,
                 std::ptr::null_mut(),
