@@ -31,6 +31,10 @@ $script:RunId = 0
 $script:RunLog = ''
 $script:LogKey = ''
 $script:RepoUrl = 'https://github.com/ASsDevpile/VIctory-NVIDIA'
+$script:Starting = $false
+$script:Stopping = $false
+$script:Starter = $null
+$script:StartHandle = $null
 
 # --- the small helpers ------------------------------------------------------
 
@@ -258,24 +262,30 @@ function Set-Running {
 }
 
 function Start-Run {
-    try {
-        $run = Start-XenithRun
-        $script:RunId = [int]$run.pid
-        $script:RunLog = [string]$run.log
-        $script:LogKey = ''
-        $ui.LogPath.Text = $script:RunLog
-        $ui.LogBox.Text = ''
-        Set-Running $true
-        Set-View 'Console'
-        $timer.Start()
-        if ((Get-XenithConfig)['MINIMIZE'] -eq 'on') { $window.WindowState = 'Minimized' }
-    } catch {
-        Show-Notice $_.Exception.Message
+    if ($script:Starting) { return }
+    $script:Starting = $true
+    $script:Stopping = $false
+    $ui.BtnPlay.IsEnabled = $false
+    $ui.StateTitle.Text = 'Starting...'
+    $ui.StateSub.Text = 'the back end is preparing the run'
+    if ((Get-XenithConfig).PRELOAD -eq 'on') {
+        Show-Notice 'Preloading is on: the shaders are translated and their pipelines built before the game starts. This takes minutes the first time (and after a purge); the window stays responsive and STOP cancels it.'
     }
+    $script:Starter = [powershell]::Create()
+    $script:Starter.Runspace = [runspacefactory]::CreateRunspace()
+    $script:Starter.Runspace.Open() | Out-Null
+    [void]$script:Starter.AddScript('param($dir); Set-Location $dir; . .\xenith-core.ps1; Start-XenithRun')
+    [void]$script:Starter.AddArgument($PSScriptRoot)
+    $script:StartHandle = $script:Starter.BeginInvoke()
+    $startTimer.Start()
 }
 
 function Stop-Run {
-    try { Stop-XenithRun -Id $script:RunId | Out-Null } catch { }
+    if ($script:RunId -gt 0) {
+        try { Stop-XenithRun -Id $script:RunId | Out-Null } catch { }
+    }
+    Get-Process victory*, victory_sm* -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
+    if ($script:Starting) { $script:Stopping = $true }
     $script:RunId = 0
     $timer.Stop()
     Set-Running $false
@@ -308,6 +318,43 @@ $timer.Add_Tick({
                 $ui.LogBox.ScrollToEnd()
             }
         } catch { }
+    }
+})
+
+$startTimer = New-Object System.Windows.Threading.DispatcherTimer
+$startTimer.Interval = [TimeSpan]::FromMilliseconds(500)
+$startTimer.Add_Tick({
+    if (-not $script:StartHandle -or -not $script:StartHandle.IsCompleted) { return }
+    $startTimer.Stop()
+    $run = $null
+    $failed = ''
+    try {
+        $out = $script:Starter.EndInvoke($script:StartHandle)
+        if ($out -and $out.Count -gt 0) { $run = $out[0] }
+    } catch {
+        $failed = $_.Exception.Message
+    }
+    if (-not $failed) {
+        foreach ($e in $script:Starter.Streams.Error) { $failed = [string]$e; break }
+    }
+    $script:Starter.Dispose()
+    $script:Starter = $null
+    $script:StartHandle = $null
+    $script:Starting = $false
+    if ($run) {
+        $script:RunId = [int]$run.pid
+        $script:RunLog = [string]$run.log
+        $script:LogKey = ''
+        $ui.LogPath.Text = $script:RunLog
+        $ui.LogBox.Text = ''
+        Set-Running $true
+        Set-View 'Console'
+        $timer.Start()
+        if ((Get-XenithConfig)['MINIMIZE'] -eq 'on') { $window.WindowState = 'Minimized' }
+    } else {
+        if (-not $script:Stopping) { Show-Notice ('the run did not start: {0}' -f $failed) }
+        $script:Stopping = $false
+        Update-State
     }
 })
 
@@ -432,7 +479,7 @@ $ui.BtnRevert.Add_Click({ Update-SettingsUi })
 $ui.LinkSupport.Add_Click({ Open-LocalPage 'docs\index.html' 'troubleshooting' })
 $ui.LinkPolicy.Add_Click({ Open-LocalPage 'docs\asset-policy.md' '' })
 
-$window.Add_Closing({ $timer.Stop() })
+$window.Add_Closing({ $timer.Stop(); $startTimer.Stop() })
 
 # --- first paint -----------------------------------------------------------------
 
