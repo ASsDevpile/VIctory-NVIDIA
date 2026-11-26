@@ -97,7 +97,8 @@ foreach ($p in $probeList) {
     foreach ($k in $p.over.Keys) { Set-Item "Env:$k" $p.over[$k] }
     $errLog = Join-Path $dir ($p.name + '.log')
     $outLog = Join-Path $dir ($p.name + '-out.txt')
-    $proc = Start-Process -FilePath $victory -ArgumentList @('run', ('"' + $Exe + '"'), '--execute') + $p.extra `
+    $runArgs = @('run', ('"' + $Exe + '"'), '--execute') + $p.extra
+    $proc = Start-Process -FilePath $victory -ArgumentList $runArgs `
         -WorkingDirectory $repo -NoNewWindow -RedirectStandardOutput $outLog -RedirectStandardError $errLog `
         -PassThru
     if (-not $proc) { Write-Host '  the runtime did not start (Start-Process failed); its error is above'; continue }
