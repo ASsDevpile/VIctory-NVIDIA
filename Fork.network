@@ -1,5 +1,5 @@
 VIctory fork watchlist
-Checked: 2026-11-27 10:00 UTC
+Checked: 2026-11-27 10:50 UTC
 
 Format: repository | default branch | observed tip | focus
 
@@ -7,11 +7,11 @@ Upstream
 Marvisak/VIctory | main | 63bcca43c6 | upstream runtime and shader changes
 
 Primary renderer forks
-ASsDevpile/VIctory-NVIDIA | main | 3404035309 | this NVIDIA port; DLSS status and diagnostics clarified
+ASsDevpile/VIctory-NVIDIA | main | e6f8adac2079 | experimental DLSS Super Resolution support
 trustno1-coder/VIctory-NVIDIA | main | 9341f4316f02 | NVIDIA runtime; BC7, raw-view, descriptor, and scheduling fixes
 avatarmanz/VIctory-7900XTX | main | 014d52dedf | AMD renderer ports and RT ordering
 Belobug/VIctory-Belobug-AMD | a-publier | 4eb6cfdf9e | AMD renderer and shader performance
-DoubleGhosty/cool_fox | main | bd8b4f524a1c | NVIDIA/AMD play sets; wave-wide shader EXEC correctness fix
+DoubleGhosty/cool_fox | main | 3a7e7e71ffda | NVIDIA/AMD play sets; wave-wide shader fallback and diagnostics
 fxceless/victory-fork | main | 9a9091d180 | shader translation, memory system, ray-tracing builder
 soldsawn/victory-nvidia-8gb | main | c09a44e97d | NVIDIA 8 GB memory and launcher adaptations
 stellarr-studio/kelvaroq | main | 92606ea7f5da | independent NVIDIA memory/DXR implementation; corrected benchmark notes
@@ -20,10 +20,10 @@ Additional active NVIDIA / performance lines
 Maykzera/victory-rtx3060 | main | 94be17f635 | RTX 3060, A/B benchmark and frame pacing
 gabeparra/victory-4090 | main | df7ec0702a | RTX 4090 under Linux/Proton; submit and memory changes
 MonkeOnYT-glitch/victory-nvidia | main | 8b3266e1c9 | NVIDIA adaptation of Belobug AMD line; benchmark notes
-runkmaskin/runkis-nvidia | main | ccdd1ce564fe | RTX tuning; new HLE async/memory work and A/B notes
-Androtim/MiniVI | main | 60eb4feb584b | low-VRAM NVIDIA fork; BC7, raw-view, and helper-priority fixes
-Bebrik229/VIctory-NVIDIA-Hybrid | main | 4f3a5f032e17 | 12 GB hybrid profile; host/readback work and perf knobs
-whiteh4cker-tr/VIctory_sm86 | main | b079c378c5 | NVIDIA fork; includes embedded-DXBC extent fix
+runkmaskin/runkis-nvidia | main | 5ad5c94268d2 | RTX tuning; shader translation throughput experiment
+Androtim/MiniVI | main | 1bbdc5819156 | low-VRAM NVIDIA fork; broad cool_fox merge and renderer changes
+Bebrik229/VIctory-NVIDIA-Hybrid | main | 73426bd0d47d | 12 GB hybrid profile; ambient clamp and opt-in hair pass
+whiteh4cker-tr/VIctory_sm86 | main | ff14f827d736 | NVIDIA fork; BC7, raw-view, descriptor, ambient and Bink fixes
 aleksesipenko/VIctory-RTX | main | abb8adf362 | NVIDIA RTX, hardware DXR and upload/fence fixes
 Peppacodes/playablegames-peppa | main | 14d8e9dafd | NVIDIA 5080 performance line with AMD changes
 dudedicosta/vicec-tay | main | 3485a52e2e | RTX 5060 Laptop / 8 GB profile and memory guard
@@ -33,8 +33,8 @@ Dolberthi/neptune-dolberth-nvidia-8gb | main | 99b231fae9 | NVIDIA 8 GB performa
 GiovannaSGuerrera/Victory-RTX2080 | main | c3040d96de | RTX 2080 snapshot and heap experiments
 
 Other active or platform-specific lines
-Zaxix/Defeat | main | c7646c531cbb | pipeline warm-up and early compute creation experiments
-rhythmhere/rhythm-VI | main | bcfdce52e84c | RTX 4050 DLSS SR + Streamline DLSS-G experiment; not yet ported
+Zaxix/Defeat | main | 32437a4a0c17 | pipeline warm-up and performance audit notes
+rhythmhere/rhythm-VI | main | fd17006bf7e8 | RTX 4050 DLSS SR + Streamline DLSS-G experiment; not yet ported
 OctoAlgo/inkVI | main | 8c773ef02d | Linux/NVIDIA and Proton patch kit
 Skyfrye/anyXboxx-diffbase | main | 774774a711 | divergent NVIDIA line based on AnyXboxX
 kc01-8/VIctoryNVIDIALINUX | main | ab45d8a3fd | Linux NVIDIA snapshot
@@ -48,6 +48,28 @@ shadowdog00/rorodev6 | tracker label; repository URL returned 404 when checked
 codec-d/cool_fox | unavailable; reported 404, use DoubleGhosty/cool_fox mirror
 
 Recent review notes
+- Rechecked all listed repository tips on 2026-11-27 10:50 UTC. The local
+  NVIDIA branch now includes experimental DLSS Super Resolution at
+  e6f8adac2079.
+- cool_fox added a per-lane retry when wave-wide SCC lowering refuses a
+  shader. It can keep a dispatch from being dropped, but is explicitly
+  inexact; the retry and shader-cache variant changes are not ported pending
+  title-shader correctness validation.
+- runkmaskin added a persistent parallel shader-precompile queue and broad
+  translator/emitter changes, claiming 30-40% less CPU per shader with
+  byte-identical DXIL. Promising for preload time, but not ported pending
+  independent benchmark and translator regression testing.
+- Androtim/MiniVI advanced by 135 commits in a broad cool_fox/low-VRAM merge.
+  Too many coupled renderer, shader, memory and loader changes for a safe
+  bulk port.
+- Bebrik's latest commit finalizes an ambient march clamp and opt-in hair
+  pass; rhythmhere's latest changes include 6 GB-targeted rendering changes
+  and different ambient/pipeline settings in its RTX 4050 launcher. Keep
+  these profiles opt-in and target-validated; no changes imported.
+- Zaxix's two newer commits are performance-audit documentation only.
+- whiteh4cker-tr's new tip includes the previously noted BC7, raw-view,
+  helper-priority, descriptor-lifetime, ambient-probe and Bink changes; its
+  latest commit is primarily launcher/documentation. No changes imported.
 - trustno1-coder's earlier declared-DXBC-extent fix is already ported locally
   in apps/victory/src/shader.rs with focused extent tests.
 - trustno1-coder and Androtim added BC7 rotation-mode correction, raw buffer
