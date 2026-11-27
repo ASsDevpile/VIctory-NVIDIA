@@ -62,7 +62,8 @@ $settings = @{
     VICTORY_JOIN_COPIES = '1'; VICTORY_INDIRECT_WINDOW = '1'; VICTORY_RELAY_COPY = '1'
     VICTORY_INDIRECT_BATCH = '2'; VICTORY_MAP_THREADS = '1'; VICTORY_TITLE_PRIORITIES = '0'; VICTORY_CARD_AWAKE = '1'
     VICTORY_SHOW_AFTER = '1'; VICTORY_AMBIENT = '0.8'; VICTORY_D3D12_DRED = 'light'; VICTORY_SKIP_PIPELINES = 'none'
-    VICTORY_THIN = '1'; VICTORY_JOIN_PARTS = '8'; VICTORY_UPLOAD_AHEAD = '1'
+    # RTX 3060 A/B: joining 16 parts improved frame-time lows; average FPS stayed within run noise.
+    VICTORY_THIN = '1'; VICTORY_JOIN_PARTS = '16'; VICTORY_JOIN_LISTS = '96'; VICTORY_UPLOAD_AHEAD = '1'
     # Renderer port 5 (VICTORY_PORT_CBV): the card reads the title's constant buffers in place
     # instead of about 23,000 copies a frame. The measured win on this card: 1 to 5-8 FPS.
     # First launch after this change retranslates every shader once (the cache keys on it).
@@ -85,7 +86,8 @@ $settings = @{
     # Ray walks end at the root while the structure builder is off (emit/intersect.rs).
     VICTORY_BVH_MISS = '1'
     # Memory compares on the card instead of the CPU: 11 -> about 22 fps on Series S.
-    VICTORY_CARD_BUFFERS_MIN_MB = '1'; VICTORY_CARD_BUFFERS_MB = '1536'
+    # RTX 3060 A/B: 64 KiB minimum reduced copy-back time; workload dependent, keep measured.
+    VICTORY_CARD_BUFFERS_MIN_KB = '64'; VICTORY_CARD_BUFFERS_MIN_MB = '1'; VICTORY_CARD_BUFFERS_MB = '1536'
     # Series S presents the interface as a second plane: laid over the game (compose.rs), else black before gameplay.
     VICTORY_COMPOSE = '1'
 }

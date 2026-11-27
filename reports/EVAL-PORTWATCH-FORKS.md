@@ -396,3 +396,25 @@ The sweep of the tips the same morning:
   win has therefore not been running. The play sets now carry it (PR #26);
   first launch retranslates the shader cache once, since the cache keys on
   the switch.
+
+## RTX 3060 tuning lead from Maykzera (2026-11-27)
+
+The newly added `Maykzera/victory-rtx3060` branch is built on the same NVIDIA
+line and reports multi-run measurements on an RTX 3060 12 GB. Its 64 KiB
+small-buffer setting moved “copying back” from about 27 ms to 15.6 ms and
+raised average FPS from 13.5 to 14.0 in the first A/B. A later 432p run averaged
+15.0 vs 13.6 FPS at the default 540p; raising joined parts from 8 to 16 had
+small average impact but improved 1% lows and P99 frame times. The author also
+records cases where lower FPS came from shader cold-starts, texture streaming,
+and different scenes, so these figures are not directly interchangeable with
+our earlier 4.89 FPS run. Source: [Maykzera's RTX 3060 report](https://github.com/Maykzera/victory-rtx3060/blob/main/docs/rtx3060.md)
+(Windows 11, RTX 3060 12 GB, Ryzen 5 5600X).
+
+The NVIDIA play set now uses the measured 64 KiB card-buffer threshold and
+16-part submission joining, mirrored in `scripts/play-nvidia.ps1` and
+`scripts/xenith-core.ps1`. The 64 KiB setting is the more plausible average-FPS
+lever; the larger join batch targets frame pacing. These are starting values
+for the next matched run, not a claim of 24 FPS or a result on this machine.
+DLSS remains opt-in: its input motion-vector/jitter conventions and reset
+behavior need frame-by-frame validation before treating it as the fix for
+render artifacts.
