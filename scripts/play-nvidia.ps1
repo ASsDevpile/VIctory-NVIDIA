@@ -64,6 +64,10 @@ $settings = @{
     VICTORY_INDIRECT_BATCH = '2'; VICTORY_MAP_THREADS = '1'; VICTORY_TITLE_PRIORITIES = '0'; VICTORY_CARD_AWAKE = '1'
     VICTORY_SHOW_AFTER = '1'; VICTORY_AMBIENT = '0.8'; VICTORY_D3D12_DRED = 'light'; VICTORY_SKIP_PIPELINES = 'none'
     VICTORY_THIN = '1'; VICTORY_JOIN_PARTS = '8'; VICTORY_UPLOAD_AHEAD = '1'
+    # Renderer port 5 (VICTORY_PORT_CBV): the card reads the title's constant buffers in place
+    # instead of about 23,000 copies a frame. The measured win on this card: 1 to 5-8 FPS.
+    # First launch after this change retranslates every shader once (the cache keys on it).
+    VICTORY_PORT_CBV = '1'
     # Cheap picture fixes, on in both sets:
     # - Overbright views: without rays the light probes keep the sky's light indoors. The fog is bounded by 1.5 times
     #   the light around, and what the title left by 2 times the estimate (was 4; ambient.rs).
