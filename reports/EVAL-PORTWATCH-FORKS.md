@@ -1,6 +1,6 @@
 # The forks the trackers rank, taken or declined
 
-2026-11-26. What came over from the code forks behind
+2026-11-27. What came over from the code forks behind
 [portwatch-vi.xyz](https://portwatch-vi.xyz/) and
 [gta6recomp.com/repo](https://gta6recomp.com/repo), and what did not. The
 trackers themselves rank READMEs and numbers; the code of the ranked trees is
@@ -48,6 +48,7 @@ From `soldsawn/victory-nvidia-8gb` and `fxceless/victory-fork`:
   our levels-on-demand mode (`VICTORY_LEVELS_ON_DEMAND=1`) is the same shape
   and further along; theirs is woven through a texture struct this tree has
   since rebuilt.
+
 - Texture copy floor at a third of the budget (a360025): ours caps the floor
   at a quarter already (`texture_floor_bytes`).
 - Free runs across the search cursor in dynamic slots (4d0c634): ours has
@@ -319,3 +320,15 @@ Checked again after the morning-after sweep; five named tips moved:
 - **upstream, rorodev6 and soldsawn**: no code move beyond already-recorded
   tips. Separate 8 GB texture and DirectStorage work stays declined for a
   12 GB RTX 3060 card.
+
+## Belobug renderer port 6
+
+Belobug's `a-publier` line reports about 22 fps (roughly 45 ms per frame) on
+an AMD RX 7900 XTX with renderer ports 1, 2, 5, 6, and 7. That is not an
+NVIDIA measurement. Port 6 (`VICTORY_PORT_GUARD=1`) is now ported here as an
+experimental, off-by-default option; its write-watch synchronization and
+parallel refresh planning still need an NVIDIA Windows A/B and stability run.
+The `VICTORY_GUARD_HOT` extension stays off because Belobug measured it as
+worse (45.6 to 47.8 ms per frame in run `guard-6`). Port 7's journal sharding
+is deferred: it changes more synchronization and should not be combined with
+port 6 before measuring the latter on NVIDIA.

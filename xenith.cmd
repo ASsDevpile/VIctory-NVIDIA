@@ -15,6 +15,7 @@ set "RESOLUTION="
 set "ADAPTER="
 set "QUALITY=on"
 set "RAYTRACING=off"
+set "PORT_GUARD=off"
 set "BUILD=diag"
 set "SKIP="
 set "CONSOLE=S"
@@ -58,6 +59,7 @@ if defined NVIDIA_CARD (echo card              %NVIDIA_CARD%) else echo card    
 if defined RESOLUTION echo render height    %RESOLUTION%
 if defined ADAPTER echo adapter           %ADAPTER%
 echo quality %QUALITY%   ray tracing %RAYTRACING%
+echo renderer port 6 %PORT_GUARD% (experimental)
 echo console %CONSOLE%   upscaler %UPSCALER%   preload %PRELOAD%
 echo.
 echo   1  Play                          (the fork's settings)
@@ -103,6 +105,7 @@ if defined RESOLUTION set "ARGS=%ARGS% -Resolution %RESOLUTION%"
 if defined ADAPTER set "ARGS=%ARGS% -Adapter "%ADAPTER%""
 if /i "%CONSOLE%"=="X" set "ARGS=%ARGS% -Console X"
 if /i "%UPSCALER%"=="dlss" set "ARGS=%ARGS% -Upscaler dlss"
+if /i "%PORT_GUARD%"=="on" set "ARGS=%ARGS% -PortGuard"
 if /i "%PRELOAD%"=="on" set "RUN_PRELOAD=1"
 if defined CACHE_DIR set "ARGS=%ARGS% -CacheDir "%CACHE_DIR%""
 if defined SAVES_DIR set "ARGS=%ARGS% -SavesDir "%SAVES_DIR%""
@@ -125,6 +128,7 @@ echo    2  Render height    %RESOLUTION%  (2160, 1440, 1080, 720, 540, 480)
 echo    3  Adapter          %ADAPTER%  (empty: the fastest%EXTRA_ADVICE%)
 echo    4  Quality          %QUALITY%  (fewer stretched bodies, rainbow skin)
 echo    5  Ray tracing      %RAYTRACING%
+echo    14 Renderer port 6  %PORT_GUARD%  (experimental, measure on your card)
 echo    6  Build            %BUILD%  (diag or release)
 echo    7  Skip pipelines   %SKIP%
 echo    8  Console          %CONSOLE%  (S is faster, X is the full output)
@@ -152,6 +156,8 @@ if "%WHICH%"=="10" call :ask PRELOAD "10 Preload shaders on or off"
 if "%WHICH%"=="11" call :ask CACHE_DIR "11 Cache folder (a full path, empty: the default)"
 if "%WHICH%"=="12" call :ask SAVES_DIR "12 Saves folder (a full path, empty: the default)"
 if "%WHICH%"=="13" call :ask DLSS_DIR "13 DLSS folder (a full path where nvngx*.dll lives; empty: dlss here)"
+if "%WHICH%"=="14" call :ask PORT_GUARD "14 Renderer port 6 on or off"
+call :save
 goto settings
 
 :found_card
@@ -168,5 +174,5 @@ if defined VALUE set "%~1=%VALUE%"
 goto :eof
 
 :save
-(for %%k in (GAME RESOLUTION ADAPTER QUALITY RAYTRACING BUILD SKIP UPSCALER CONSOLE PRELOAD CACHE_DIR SAVES_DIR DLSS_DIR) do echo %%k=!%%k!)>xenith.ini
+(for %%k in (GAME RESOLUTION ADAPTER QUALITY RAYTRACING PORT_GUARD BUILD SKIP UPSCALER CONSOLE PRELOAD CACHE_DIR SAVES_DIR DLSS_DIR) do echo %%k=!%%k!)>xenith.ini
 goto :eof

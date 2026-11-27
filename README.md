@@ -51,6 +51,7 @@ is set by `VICTORY_MEMORY_CARD_MB` (4,096 MB, sized for a 24 GB card).
 |---|---|
 | `VICTORY_PORT_CONSTANTS=1` | The title's 174 MB constants heap is read by the card where the title writes it: no uploads, no fills |
 | `VICTORY_PORT_DESCRIPTORS=1` | The title's descriptor-table stores are patched (byte-checked) to report the slots they write, instead of a scan of ~600,000 slots a frame |
+| `VICTORY_PORT_GUARD=1` | Experimental renderer port 6: coordinates write-watch faults and refreshes with per-block claims, and avoids kernel queries for known view memory. Measured on an RX 7900 XTX, not yet on NVIDIA; test with `scripts\play-nvidia.ps1 -PortGuard` or the Xenith setting before enabling it in a play profile. |
 
 What is known to be wrong:
 

@@ -563,6 +563,7 @@
                 <CheckBox x:Name="ChkQuality" Content="Quality patches (costs fps)" Margin="0,0,28,6"/>
                 <CheckBox x:Name="ChkRay" Content="Ray tracing on (slower)" Margin="0,0,28,6"/>
                 <CheckBox x:Name="ChkPreload" Content="Preload shaders before each run (minutes, once)" Margin="0,0,28,6"/>
+                <CheckBox x:Name="ChkPortGuard" Content="Experimental renderer port 6 (measure on your card)" Margin="0,0,28,6"/>
                 <CheckBox x:Name="ChkMinimize" Content="Minimize the launcher when the game starts" Margin="0,0,0,6"/>
               </WrapPanel>
             </StackPanel>
