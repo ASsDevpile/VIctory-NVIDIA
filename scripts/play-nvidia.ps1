@@ -131,8 +131,8 @@ if ($PSBoundParameters.ContainsKey('WindowsBarMB')) {
 }
 if ($DlssDir) { $settings.VICTORY_DLSS_DIR = $DlssDir }
 foreach ($k in $More.Keys) { $settings[$k] = $More[$k] }
-$upscaler = [string]$settings.VICTORY_UPSCALER
-if ($upscaler -ieq 'dlss') {
+$selectedUpscaler = [string]$settings.VICTORY_UPSCALER
+if ($selectedUpscaler -ieq 'dlss') {
     $dlssRuntimeDir = [string]$settings.VICTORY_DLSS_DIR
     if (-not $dlssRuntimeDir) {
         $dlssRuntimeDir = Join-Path $PSScriptRoot '..\dlss'
