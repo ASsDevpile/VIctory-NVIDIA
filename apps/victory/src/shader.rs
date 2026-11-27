@@ -44,14 +44,41 @@ pub(crate) fn sources(data: &[u8]) -> Vec<Source<'_>> {
     if sgd5::is_sgd5(data) {
         out.extend(sgd5::records(data).map(Source::Packed));
     }
-    let raw = memchr::memmem::find_iter(data, b"DXBC")
-        .filter(|&offset| Container::parse(&data[offset..]).is_ok())
-        .map(|offset| Source::Raw {
-            offset,
-            data: &data[offset..],
-        });
+    let raw = memchr::memmem::find_iter(data, b"DXBC").filter_map(|offset| {
+        let tail = &data[offset..];
+        let size = u32::from_le_bytes(tail.get(0x18..0x1c)?.try_into().ok()?) as usize;
+        let data = tail.get(..size)?;
+        Container::parse(data).ok()?;
+        Some(Source::Raw { offset, data })
+    });
     out.extend(raw);
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sources;
+
+    #[test]
+    fn embedded_containers_exclude_their_carrier_suffix() {
+        let shader = b"DXBC\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x01\0\0\0\x20\0\0\0\0\0\0\0";
+        let carrier = [b"MZ".as_slice(), shader, b"carrier suffix"].concat();
+
+        let entries = sources(&carrier);
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].label(), "@0x2");
+        assert_eq!(entries[0].bytes().unwrap().as_ref(), shader);
+    }
+
+    #[test]
+    fn embedded_containers_reject_truncated_or_invalid_extents() {
+        let shader = b"DXBC\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x01\0\0\0\x40\0\0\0\0\0\0\0";
+        let carrier = [b"MZ".as_slice(), shader].concat();
+
+        assert!(sources(&carrier).is_empty());
+        assert!(sources(b"DXBC").is_empty());
+    }
 }
 
 #[derive(Default)]
