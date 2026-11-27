@@ -25,7 +25,7 @@ foreach ($n in @('NavOverview', 'NavNotes', 'NavConsole', 'NavWebsite', 'GpuBadg
 $script:Brushes = New-Object System.Windows.Media.BrushConverter
 $script:BrushOk = $script:Brushes.ConvertFromString('#9BF0CF')
 $script:BrushBad = $script:Brushes.ConvertFromString('#FF7B81')
-$script:BrushText = $script:Brushes.ConvertFromString('#E9EAF5')
+$script:BrushText = $script:Brushes.ConvertFromString('#EEF0F7')
 
 $script:RunId = 0
 $script:RunLog = ''
