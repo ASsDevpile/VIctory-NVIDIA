@@ -704,6 +704,8 @@ fn wake_decoder() {
             std::thread::Builder::new()
                 .name("victory XMA decoder".into())
                 .spawn(|| {
+                    #[cfg(windows)]
+                    let _mmcss = register_xma_decoder_mmcss();
                     loop {
                         xma().pump();
                         // A 256-byte output block lasts 2.7 ms at 48 kHz mono.
@@ -713,6 +715,42 @@ fn wake_decoder() {
                 .map_or_else(|_| std::thread::current(), |h| h.thread().clone())
         })
         .unpark();
+}
+
+#[cfg(windows)]
+struct MmcssRegistration(windows_sys::Win32::Foundation::HANDLE);
+
+#[cfg(windows)]
+impl Drop for MmcssRegistration {
+    fn drop(&mut self) {
+        // SAFETY: this is the registration handle returned for this thread.
+        unsafe {
+            windows_sys::Win32::System::Threading::AvRevertMmThreadCharacteristics(self.0);
+        }
+    }
+}
+
+/// XMA output is consumed on a short cadence by the title's mixer. Ask
+/// Windows to schedule this decoder as audio work so busy render/streaming
+/// threads do not starve its output ring. Set `VICTORY_AUDIO_MMCSS=0` to
+/// leave its normal inherited priority in place.
+#[cfg(windows)]
+fn register_xma_decoder_mmcss() -> Option<MmcssRegistration> {
+    use windows_sys::Win32::System::Threading::{AvSetMmThreadCharacteristicsA, GetLastError};
+
+    if std::env::var_os("VICTORY_AUDIO_MMCSS").is_some_and(|value| value == "0") {
+        return None;
+    }
+    let mut task_index = 0;
+    // SAFETY: the task name is a static NUL-terminated string; the index is
+    // writable for the duration of the registration call.
+    let handle = unsafe { AvSetMmThreadCharacteristicsA(b"Pro Audio\0".as_ptr(), &mut task_index) };
+    if handle.is_null() {
+        tracing::warn!(error = unsafe { GetLastError() }, "could not register XMA decoder with MMCSS");
+        return None;
+    }
+    tracing::debug!(task_index, "XMA decoder registered with MMCSS Pro Audio task");
+    Some(MmcssRegistration(handle))
 }
 
 /// Runs an XMA command; false for one this does not know.
