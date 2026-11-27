@@ -310,8 +310,8 @@
       <tr><td><code>-Adapter</code></td><td>on more than one card, which one: part of its name or its index. Default: the fastest</td></tr>
       <tr><td><code>-Quality</code></td><td>fewer stretched bodies and less rainbow skin, at fewer frames</td></tr>
       <tr><td><code>-RayTracing</code></td><td>keep the title's ray-tracing passes (off by default)</td></tr>
-      <tr><td><code>-Upscaler</code></td><td><code>fsr</code> (the title's own) or <code>dlss</code> — see <a href="#dlss">the DLSS folder</a></td></tr>
-      <tr><td><code>-DlssDir</code></td><td>where the NGX libraries live on their own (<code>VICTORY_DLSS_DIR</code>)</td></tr>
+      <tr><td><code>-Upscaler</code></td><td><code>fsr</code> (the title's own); <code>dlss</code> is a placeholder and still uses FSR</td></tr>
+      <tr><td><code>-DlssDir</code></td><td>folder Xenith checks for Streamline/NGX files (<code>VICTORY_DLSS_DIR</code>); files are not loaded</td></tr>
       <tr><td><code>-Preload</code></td><td>translate and warm before the run — see <a href="#preload">the preload</a></td></tr>
       <tr><td><code>-PerfLog</code> / <code>-PerfEvery</code></td><td>sample system and run CPU/RAM plus GPU utilization and memory into a CSV in <code>debug-runs</code> until the run exits; interval is 1–60 seconds (default 1)</td></tr>
       <tr><td><code>-PortRT</code></td><td>experimental placed-copy ordering path (off by default; compare matched runs; also available in Xenith Settings)</td></tr>
@@ -381,18 +381,14 @@
 
 <section id="dlss">
   <div class="wrap">
-    <h2>DLSS, in a <span class="grad">folder of its own</span></h2>
-    <p>The title's FSR is baked into its executable, so nothing of the game is
-    touched: the run keeps the FSR path and a DLSS proxy speaks FSR to the title
-    and DLSS to the driver. The proxy and its NGX libraries
-    (<code>nvngx*.dll</code> and friends) live <strong>away from the game's
-    files</strong>, in a folder of their own:</p>
+    <h2>DLSS integration status</h2>
+    <p>DLSS is not integrated in this fork yet. Selecting the DLSS placeholder
+    still leaves the title on FSR; the runtime does not call Streamline/NGX or
+    replace the FSR dispatch. The official SDK files alone do not enable DLSS.</p>
     <ol class="steps">
-      <li>Get the libraries on your own responsibility — NVIDIA NGX DLLs arrive with the driver, and tools such as DLSS Swapper or the OptiScaler project handle placing them.</li>
-      <li>Make a <code>dlss\</code> folder next to the launcher and put the DLLs in it. It is picked up on its own; or name any folder with <code>VICTORY_DLSS_DIR</code>, <code>-DlssDir</code>, or the launcher's DLSS row.</li>
-      <li>Set <code>VICTORY_UPSCALER=dlss</code> (the script's <code>-Upscaler dlss</code>, or window's upscaler list).</li>
+      <li>The DLSS folder is currently checked for the official Streamline files, but no DLLs are loaded. In Xenith, point it at the SDK's <code>bin\x64</code> folder.</li>
+      <li>DLSS integration needs per-frame render color, depth, motion-vector and output resources tagged at the title's upscaling point. That integration is not implemented yet.</li>
     </ol>
-    <p style="color: var(--muted); font-size: 15px;">The loader logs the folder it found. With none, the run falls back to the title's FSR.</p>
   </div>
 </section>
 
@@ -426,8 +422,9 @@
       <tr><td><code>VICTORY_PIPELINE_WAIT_ONCE=0</code></td><td>a pipeline past its wait budget waits again every frame, as before</td></tr>
       <tr><td><code>VICTORY_MEMORY_CARD_MB</code></td><td>the most of title memory on the card (4,096)</td></tr>
       <tr><td><code>VICTORY_D3D12_ADAPTER</code></td><td>which card makes the device (name part or index)</td></tr>
-      <tr><td><code>VICTORY_UPSCALER=dlss</code></td><td>the title runs its FSR path and a DLSS proxy speaks DLSS to the driver (the proxy is yours to supply, in a folder of its own)</td></tr>
-      <tr><td><code>VICTORY_DLSS_DIR</code></td><td>where the NVIDIA NGX libraries live on their own, away from the game's files</td></tr>
+      <tr><td><code>VICTORY_UPSCALER=dlss</code></td><td>placeholder only; the game still uses FSR and the runtime does not call Streamline</td></tr>
+      <tr><td><code>VICTORY_DLSS_DIR</code></td><td>folder Xenith checks for SDK files; the current runtime does not load them</td></tr>
+      <tr><td><code>VICTORY_DLSS_TRACE=1</code></td><td>diagnostics build: press F9 in gameplay to log one frame of compute shader and resource metadata</td></tr>
       <tr><td><code>VICTORY_SAVES_DIR</code></td><td>where the title's saves live, instead of the data folder</td></tr>
       <tr><td>shader preload</td><td><code>victory translate</code> and <code>victory warm</code> before a run (or the launcher's preload tick): no first-seen-places hitches</td></tr>
     </table>

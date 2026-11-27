@@ -148,7 +148,7 @@ function Update-State {
     Add-HealthRow ('the runtime (target\{0})' -f $setup.build) ([bool]$setup.runtime_ok)
     Add-HealthRow 'the RT skip list (scripts\rt_off_hashes.txt)' ([bool]$setup.rt_list_ok)
     if ($cfg.UPSCALER -eq 'dlss') {
-        Add-HealthRow 'the NGX files in the DLSS folder' ([bool]$setup.dlss_ok)
+        Add-HealthRow 'the Streamline + DLSS files in the DLSS folder' ([bool]$setup.dlss_ok)
     }
     if ($cfg.CACHE_DIR) { Add-HealthRow 'the cache folder' (Test-Path $cfg.CACHE_DIR) }
     if ($cfg.SAVES_DIR) { Add-HealthRow 'the saves folder' (Test-Path $cfg.SAVES_DIR) }
@@ -158,7 +158,7 @@ function Update-State {
     if (-not $setup.game_ok) { $missing += 'the game exe (Settings > Title)' }
     if (-not $setup.runtime_ok) { $missing += 'the runtime: cargo build --locked --profile diag -p victory --features diagnostics' }
     if (-not $setup.rt_list_ok) { $missing += 'the RT skip list: scripts\rt_off_hashes.txt' }
-    if ($cfg.UPSCALER -eq 'dlss' -and -not $setup.dlss_ok) { $missing += 'the NGX files (nvngx_dlss.dll and nvngx.dll) in the DLSS folder' }
+    if ($cfg.UPSCALER -eq 'dlss' -and -not $setup.dlss_ok) { $missing += 'the SDK files (nvngx_dlss.dll, sl.dlss.dll, sl.interposer.dll and sl.common.dll) in the DLSS folder' }
 
     if ($missing.Count -eq 0) {
         $ui.StateDot.Fill = $script:BrushOk
@@ -177,9 +177,9 @@ function Update-State {
 
     if ($cfg.UPSCALER -eq 'dlss') {
         if (-not $setup.dlss_ok) {
-            Show-Notice ('The DLSS folder ({0}) is missing nvngx_dlss.dll or nvngx.dll. Point Settings at the folder that holds them, or switch the upscaler back to the fork''s own.' -f $setup.dlss_dir)
+            Show-Notice ('The DLSS folder ({0}) is missing files from NVIDIA''s Streamline SDK. Point Settings at its bin\x64 folder, or switch the upscaler back to the fork''s own.' -f $setup.dlss_dir)
         } else {
-            Show-Notice 'DLSS is parked for now: the forced-upscaler path ends in a white window (an unimplemented console method). Switch the upscaler back to the fork''s own to play.'
+            Show-Notice 'DLSS is not integrated yet: these files are only detected, not loaded; the game still uses FSR. Switch to the fork''s own upscaler for normal play.'
         }
     } else {
         Hide-Notice
@@ -192,7 +192,7 @@ function Update-PlayCard {
     $which = 'Series S'
     if ($set.series_x) { $which = 'Series X' }
     $up = 'the fork''s own upscaler'
-    if ($cfg.UPSCALER) { $up = 'the DLSS proxy' }
+    if ($cfg.UPSCALER) { $up = 'DLSS placeholder (FSR remains active)' }
     $rtPort = ''
     if ($cfg.PORT_RT -eq 'on') { $rtPort = '; experimental RT ordering on' }
     $ui.CardRunTitle.Text = ('{0}, rendering at {1}p' -f $which, $cfg.RESOLUTION)

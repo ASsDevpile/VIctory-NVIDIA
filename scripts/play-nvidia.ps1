@@ -12,11 +12,8 @@
 #                  (-Adapter 1). Default: the fastest card (VICTORY_D3D12_ADAPTER, DXGI's GPU preference order).
 # -Console         Series S (the default, faster) or Series X (slower, full output); -SeriesX is the
 #                  same as -Console X.
-# -Upscaler        fsr (the default: the title's FSR) or dlss: the title runs its FSR path, and a DLSS proxy
-#                  speaks FSR to it and DLSS to the driver (VICTORY_UPSCALER). The proxy and its NGX DLLs live
-#                  in a folder of their own (VICTORY_DLSS_DIR, -DlssDir), never among the game's files.
-# -DlssDir         the DLSS folder: where the NGX libraries (nvngx*.dll and friends) live on their own.
-#                  Empty: the loader also looks beside the launcher that set it.
+# -Upscaler        fsr (the default) or dlss (placeholder only: the title still uses FSR; DLSS is not integrated).
+# -DlssDir         the folder holding the Streamline SDK files; checked by Xenith, not loaded by the current runtime.
 # -Preload         translate the title's shaders into the cache and make their pipelines before the run
 #                  (minutes, once): the run then starts without the first-seen-places hitches.
 # -CacheDir        where the runtime keeps its derived files (shader translations, pipelines, images)

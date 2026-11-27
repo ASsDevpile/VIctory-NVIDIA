@@ -87,11 +87,9 @@ quality, the upscaler, shader and pipeline preload, and where the cache, the sav
 the DLSS files live) and start through `scripts\play-nvidia.ps1`. The card
 is found for you (the fastest is picked by default; the window names yours
 and lets you pick another). The upscaler row picks FSR (the title's own) or
-DLSS: set, the title runs its FSR path and a DLSS proxy - yours to supply,
-like the rest of the NVIDIA files - speaks DLSS to the driver. The proxy and
-its NGX DLLs live in a folder of their own (`dlss\` next to the launcher,
-or name any folder with `VICTORY_DLSS_DIR`); the game's folder is never
-touched. When preload is enabled, the window asks before each launch and shows
+DLSS (not integrated yet; selecting it leaves the title on FSR). Do not
+expect NGX DLLs alone to enable DLSS. When preload is enabled, the window asks
+before each launch and shows
 the current phase. It translates shader code and warms host pipelines before
 the run (minutes on the first pass or after a cache refresh); it does not
 bulk-load streamed game assets into VRAM. The project's website is

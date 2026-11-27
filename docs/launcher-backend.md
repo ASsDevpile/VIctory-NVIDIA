@@ -36,7 +36,7 @@ A front end consumes it in one of two ways and must not bypass it:
 | `RAYTRACING` | `on`/`off`; off applies `scripts/rt_off_hashes.txt` |
 | `BUILD` | `diag` or `release` (which `target\<build>\victory.exe` to run) |
 | `SKIP` | pipeline skip preset (diagnostics) |
-| `UPSCALER` | empty (fork's own) or `dlss` (title's FSR path; NGX from `DLSS_DIR`) |
+| `UPSCALER` | empty (fork's own) or `dlss` (placeholder only; the title still uses FSR) |
 | `CONSOLE` | `S` (1080p out) or `X` (2160p out) |
 | `PRELOAD` | `on` = translate + warm before every launch (minutes, once) |
 | `CACHE_DIR`, `SAVES_DIR`, `DLSS_DIR`, `LOG_DIR` | where those live; empty = defaults |

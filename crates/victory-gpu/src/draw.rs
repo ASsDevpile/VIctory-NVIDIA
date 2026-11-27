@@ -2854,6 +2854,17 @@ impl State {
         #[cfg(feature = "diagnostics")]
         list.note_op(|| self.op_text(format!("dispatch {x}x{y}x{z}"), true));
         #[cfg(feature = "diagnostics")]
+        {
+            let frame = crate::queue::presented() + 1;
+            if crate::capture::dlss_trace_frame(frame) {
+                tracing::info!(
+                    frame,
+                    operation = %self.op_text(format!("dispatch {x}x{y}x{z}"), true),
+                    "DLSS diagnostic compute dispatch"
+                );
+            }
+        }
+        #[cfg(feature = "diagnostics")]
         if crate::pipeline::is_builder(self.pipeline as This) {
             crate::capture::op(list as *const _ as usize, || format!("builder {}", p.name));
             self.list_dropped_roots([x, y, z]);

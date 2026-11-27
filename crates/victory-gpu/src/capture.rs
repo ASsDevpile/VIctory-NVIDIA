@@ -124,6 +124,17 @@ fn world_on() -> bool {
 /// LOCAL: the frame F9 asked for ([`frame_drew`]); `u64::MAX`: none.
 static KEY_FRAME: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(u64::MAX);
 
+fn dlss_trace_on() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| crate::switch::on("VICTORY_DLSS_TRACE"))
+}
+
+/// Whether `frame` is the frame selected for the DLSS dispatch trace.
+#[cfg(feature = "diagnostics")]
+pub(crate) fn dlss_trace_frame(frame: u64) -> bool {
+    dlss_trace_on() && KEY_FRAME.load(std::sync::atomic::Ordering::Relaxed) == frame
+}
+
 /// The first frame that ran 500 draws or more (`VICTORY_CAPTURE_WORLD`).
 static WORLD: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(u64::MAX);
 
@@ -133,7 +144,7 @@ pub(crate) fn frame_drew(frame: u64, drawn: u64) {
     // LOCAL: with a capture folder, F9 captures the next frame as a listed
     // one (its picture, its ops and, with VICTORY_DUMP_TARGETS=1, every
     // target it drew): to catch a picture fault the moment it shows.
-    if folder().is_some() {
+    if folder().is_some() || dlss_trace_on() {
         static WAS_DOWN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
         // SAFETY: a plain query of the keyboard's state.
         let down = unsafe {
@@ -143,7 +154,12 @@ pub(crate) fn frame_drew(frame: u64, drawn: u64) {
         } < 0;
         if down && !WAS_DOWN.swap(true, Relaxed) {
             KEY_FRAME.store(frame + 1, Relaxed);
-            tracing::info!(frame = frame + 1, "F9: this frame is captured");
+            tracing::info!(
+                frame = frame + 1,
+                capture = folder().is_some(),
+                dlss_trace = dlss_trace_on(),
+                "F9: next frame selected"
+            );
         } else if !down {
             WAS_DOWN.store(false, Relaxed);
         }

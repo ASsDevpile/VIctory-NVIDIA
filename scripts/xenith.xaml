@@ -576,7 +576,7 @@
                 <TextBlock Style="{StaticResource Label}" Text="Upscaler"/>
                 <ComboBox Grid.Column="1" x:Name="CmbUpscaler">
                   <ComboBoxItem Content="The fork's own (default)" Tag=""/>
-                  <ComboBoxItem Content="DLSS (the title's FSR path; NGX files from the DLSS folder)" Tag="dlss"/>
+                  <ComboBoxItem Content="DLSS (not integrated; FSR remains active)" Tag="dlss"/>
                 </ComboBox>
               </Grid>
               <WrapPanel Margin="0,12,0,0">

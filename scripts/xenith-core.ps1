@@ -93,7 +93,12 @@ function Test-XenithSetup {
     $dlssDir = $cfg.DLSS_DIR
     if ($cfg.UPSCALER -eq 'dlss') {
         if (-not $dlssDir) { $dlssDir = Join-Path $repo 'dlss' }
-        $dlssOk = (Test-Path (Join-Path $dlssDir 'nvngx_dlss.dll')) -and (Test-Path (Join-Path $dlssDir 'nvngx.dll'))
+        foreach ($file in @('nvngx_dlss.dll', 'sl.dlss.dll', 'sl.interposer.dll', 'sl.common.dll')) {
+            if (-not (Test-Path (Join-Path $dlssDir $file))) {
+                $dlssOk = $false
+                break
+            }
+        }
     }
     [pscustomobject]@{
         game_ok        = ($cfg.GAME -and (Test-Path $cfg.GAME))
