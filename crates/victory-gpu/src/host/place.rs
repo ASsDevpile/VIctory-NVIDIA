@@ -62,6 +62,11 @@ pub(super) struct Placed {
 }
 
 impl Placed {
+    /// Whether the card copies the source bytes from upload memory at submission.
+    pub(super) fn from_upload(&self) -> bool {
+        self.from.is_some()
+    }
+
     /// Whether flights that write `written` are waited for.
     pub(super) fn waits(&self, written: &[(usize, usize)]) -> Waits {
         let source = touches(written, self.src, self.src + self.len);

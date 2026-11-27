@@ -154,7 +154,9 @@ if ($Preload) {
     $env:VICTORY_GAME_DIR = Split-Path $Exe
     Write-Host 'preload: translating the shaders and making the pipelines they first ask for (minutes, once)'
     & $victory translate
+    if ($LASTEXITCODE -ne 0) { throw "shader translation failed with exit code $LASTEXITCODE" }
     & $victory warm
+    if ($LASTEXITCODE -ne 0) { throw "pipeline warm failed with exit code $LASTEXITCODE" }
 }
 $runArgs = @('run', $Exe, '--execute')
 if (-not $seriesX) { $runArgs += @('--console', 'series-s') }
