@@ -1,0 +1,38 @@
+VIctory fork watchlist
+Checked: 2026-11-27 UTC
+
+Format: repository | default branch | observed tip | focus
+
+Upstream
+Marvisak/VIctory | main | 63bcca43c6 | upstream runtime and shader changes
+
+Primary renderer forks
+ASsDevpile/VIctory-NVIDIA | main | 6693300e4d | this NVIDIA port; opt-in placed-copy RT path
+trustno1-coder/VIctory-NVIDIA | main | c437b0594b | NVIDIA runtime, launcher, input, RTX 50 frame generation
+avatarmanz/VIctory-7900XTX | main | 014d52dedf | AMD renderer ports and RT ordering
+Belobug/VIctory-Belobug-AMD | a-publier | 4eb6cfdf9e | AMD renderer and shader performance
+DoubleGhosty/cool_fox | main | 583108be97 | NVIDIA/AMD play sets and renderer ports
+fxceless/victory-fork | main | 9a9091d180 | shader translation, memory system, ray-tracing builder
+soldsawn/victory-nvidia-8gb | main | c09a44e97d | NVIDIA 8 GB memory and launcher adaptations
+stellarr-studio/kelvaroq | main | e062a82e04 | independent NVIDIA memory/DXR implementation
+
+Additional tracker forks
+GiovannaSGuerrera/Victory-RTX2080 | main | c3040d96de | RTX 2080 snapshot and heap experiments
+Dolberthi/neptune-dolberth-nvidia-8gb | main | 99b231fae9 | NVIDIA 8 GB performance and storage
+
+Tracker aliases / unresolved repository identities
+CGBJ | alias for the cool_fox performance line; tracked at DoubleGhosty/cool_fox
+Hyphen | alias for fxceless/victory-fork
+Vice-Tay | tracker label; repository identity not verified
+shadowdog00/rorodev6 | tracker label; repository URL returned 404 when checked
+codec-d/cool_fox | unavailable; reported 404, use DoubleGhosty/cool_fox mirror
+
+Integration notes
+- The narrow placed-copy RT ordering/forwarding port is already in this repository
+  (6693300e4d); it remains opt-in.
+- RTX 50 frame generation is not applicable to the RTX 3060.
+- DualSense HID support is an input feature, not a rendering/performance change;
+  its Windows-specific implementation was not ported or validated here.
+- The fxceless ray-tracing builder change spans memory tracking and shader paths;
+  it is not a safe piecemeal port, and the current NVIDIA play set keeps that
+  ray-tracing builder path disabled.

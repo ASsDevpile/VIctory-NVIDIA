@@ -29,6 +29,7 @@
 # -PerfEvery       seconds between performance samples (1-60, default 1; used with -PerfLog)
 # -LogDir          folder for performance CSV output (default: debug-runs beside this script)
 # -PortGuard       experimental renderer port 6 write-watch path (off by default; measure on your card)
+# -PortRT           experimental placed-copy ordering path (off by default; measure on your card)
 # -WindowsBarMB    maximum MiB of title memory windows in CPU-mapped VRAM (by default 3072 on PCs with under
 #                  24 GB of RAM, else 0; -WindowsBarMB 0 turns it off).
 # -More            other settings: -More @{VICTORY_PANEL='1'}
@@ -53,6 +54,7 @@ param(
     [ValidateRange(1, 60)][int]$PerfEvery = 1,
     [string]$LogDir,
     [switch]$PortGuard,
+    [switch]$PortRT,
     [hashtable]$More = @{}
 )
 $seriesX = $SeriesX -or $Console -eq 'X'
@@ -118,6 +120,7 @@ if ($Resolution) {
 }
 if ($Adapter) { $settings.VICTORY_D3D12_ADAPTER = $Adapter }
 if ($PortGuard) { $settings.VICTORY_PORT_GUARD = '1' }
+if ($PortRT) { $settings.VICTORY_PORT_RT = '1' }
 if ($PSBoundParameters.ContainsKey('WindowsBarMB')) {
     $settings.VICTORY_WINDOWS_BAR_MB = $WindowsBarMB.ToString([Globalization.CultureInfo]::InvariantCulture)
 } else {

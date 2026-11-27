@@ -41,6 +41,7 @@ A front end consumes it in one of two ways and must not bypass it:
 | `PRELOAD` | `on` = translate + warm before every launch (minutes, once) |
 | `CACHE_DIR`, `SAVES_DIR`, `DLSS_DIR`, `LOG_DIR` | where those live; empty = defaults |
 | `LOG_LEVEL` | how much the runtime logs during a run: `info` (the default, cheap), `debug` (the per-frame diagnostics spam; measurable fps) or `trace`; the white-screen probes need `debug` |
+| `PORT_RT` | `on` enables the experimental placed-copy ordering optimization (`VICTORY_PORT_RT=1`); off by default, compare with a matched run before keeping it on |
 | `PERF_LOG` | `on` = sample CPU, RAM and GPU usage for the whole run into a `victory-perf-<date>.csv` in the log folder (`scripts/capture-usage.ps1` follows the run's process id) |
 | `PERF_INTERVAL` | seconds between performance samples (1-60, default 1; used when `PERF_LOG` is on) |
 

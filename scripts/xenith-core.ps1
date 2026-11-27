@@ -29,6 +29,7 @@ $script:XenithDefaults = @{
     LOG_LEVEL   = 'info'
     WINDOWS_BAR_MB = ''
     PORT_GUARD  = 'off'
+    PORT_RT     = 'off'
     PERF_LOG    = 'off'
     PERF_INTERVAL = '1'
 }
@@ -143,6 +144,7 @@ function Get-XenithPlaySet {
     if ($cfg.UPSCALER) { $settings.VICTORY_UPSCALER = $cfg.UPSCALER.ToLowerInvariant() }
     if ($cfg.ADAPTER) { $settings.VICTORY_D3D12_ADAPTER = $cfg.ADAPTER }
     if ($cfg.PORT_GUARD -eq 'on') { $settings.VICTORY_PORT_GUARD = '1' }
+    if ($cfg.PORT_RT -eq 'on') { $settings.VICTORY_PORT_RT = '1' }
     if ($cfg.CACHE_DIR) { $settings.VICTORY_CACHE_DIR = $cfg.CACHE_DIR }
     if ($cfg.SAVES_DIR) { $settings.VICTORY_SAVES_DIR = $cfg.SAVES_DIR }
     if ($cfg.WINDOWS_BAR_MB) {

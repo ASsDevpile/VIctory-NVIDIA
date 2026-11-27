@@ -584,6 +584,7 @@
                 <CheckBox x:Name="ChkRay" Content="Ray tracing on (slower)" Margin="0,0,28,6"/>
                 <CheckBox x:Name="ChkPreload" Content="Preload shader + pipeline caches (asks before launch)" Margin="0,0,28,6"/>
                 <CheckBox x:Name="ChkPortGuard" Content="Experimental renderer port 6 (measure on your card)" Margin="0,0,28,6"/>
+                <CheckBox x:Name="ChkPortRT" Content="Experimental RT ordering (A/B test)" ToolTip="Enables VICTORY_PORT_RT: reduces waits around placed copies. Keep off unless you are measuring it." Margin="0,0,28,6"/>
                 <CheckBox x:Name="ChkMinimize" Content="Minimize the launcher when the game starts" Margin="0,0,0,6"/>
               </WrapPanel>
               <Grid Margin="0,8,0,0">
