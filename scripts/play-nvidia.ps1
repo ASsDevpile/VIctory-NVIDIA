@@ -25,6 +25,7 @@
 #                  folder (VICTORY_SAVES_DIR).
 # -Build           target\diag (the default, the build all measurements are of) or target\release
 #                  (the release build ignores the ray-tracing skip list: VICTORY_SKIP_PIPELINES is a diagnostics switch)
+# -PortGuard       experimental renderer port 6 write-watch path (off by default; measure on your card)
 # -WindowsBarMB    maximum MiB of title memory windows in CPU-mapped VRAM (by default 3072 on PCs with under
 #                  24 GB of RAM, else 0; -WindowsBarMB 0 turns it off).
 # -More            other settings: -More @{VICTORY_PANEL='1'}
@@ -45,6 +46,7 @@ param(
     [string]$SavesDir,
     [ValidateSet('diag', 'release')][string]$Build = 'diag',
     [int]$WindowsBarMB,
+    [switch]$PortGuard,
     [hashtable]$More = @{}
 )
 $seriesX = $SeriesX -or $Console -eq 'X'
@@ -105,6 +107,7 @@ if ($Resolution) {
     $settings.VICTORY_RENDER_SCALE = ([int]$Resolution / $outHeight).ToString('0.####', [Globalization.CultureInfo]::InvariantCulture)
 }
 if ($Adapter) { $settings.VICTORY_D3D12_ADAPTER = $Adapter }
+if ($PortGuard) { $settings.VICTORY_PORT_GUARD = '1' }
 if ($PSBoundParameters.ContainsKey('WindowsBarMB')) {
     $settings.VICTORY_WINDOWS_BAR_MB = $WindowsBarMB.ToString([Globalization.CultureInfo]::InvariantCulture)
 } else {
