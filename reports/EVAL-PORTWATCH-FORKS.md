@@ -376,11 +376,23 @@ The sweep of the tips the same morning:
   their own tree, all off by default. Not portable piecemeal. The one idea
   aimed at exactly this tree's bottleneck is their indirect batching
   (`0051-indirect`: several of the title's indirect records clamped into one
-  scratch batch instead of one host pass each) - on the shelf as the next
-  draw-side port to take piece by piece on a Windows measurement machine.
+  scratch batch instead of one host pass each) - studied in full and
+  superseded: this tree's `indirect/batch.rs` (play-set mode `2`) already
+  does more (256 lanes to their 64, four batch sources to their one,
+  tile-class dedup, budget charged per executions), so the port is dropped.
 - **The chase for 24 fps**: Belobug's number is an RX 9070 XT, a card several
   times this one at raster. With the host's share of the frame already at
-  12%, the realistic order for this 3060 is the indirect batching above,
-  then whatever the next sweep finds in translated-shader cost, and on the
-  user's side the output height (`RESOLUTION` 720 or 540 in the launcher),
-  since the card is already at its minimum render scale.
+  12%, the realistic order for this 3060 is whatever the next sweep finds in
+  translated-shader cost (avatarmanz's port-RT part 1 and
+  `VICTORY_PORT_CONSTANTS_ORDER` are the port-5-family candidates), and on
+  the user's side the output height (`RESOLUTION` 720 or 540 in the
+  launcher), since the card is already at its minimum render scale.
+- **The port 5 miss**: checking fxceless's `VICTORY_INPLACE_CONSTANTS` led
+  back to our own renderer port 5 (`VICTORY_PORT_CBV`) and to the discovery
+  that no script, doc, or launcher key ever carried it - off by default in
+  `emit/shader.rs`, absent from every play set since its merge (proven
+  against the uploaded captures: no "renderer port 5" log lines, no
+  `VICTORY_PORT_CBV` in the environment echoes). The measured 1 to 5-8 fps
+  win has therefore not been running. The play sets now carry it (PR #26);
+  first launch retranslates the shader cache once, since the cache keys on
+  the switch.
