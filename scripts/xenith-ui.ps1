@@ -18,7 +18,7 @@ Pop-Location
 $window = [Windows.Markup.XamlReader]::Parse((Get-Content (Join-Path $PSScriptRoot 'xenith.xaml') -Raw))
 
 $ui = @{}
-foreach ($n in @('NavOverview', 'NavNotes', 'NavConsole', 'NavWebsite', 'GpuBadge', 'NoticeBar', 'NoticeText', 'NoticeClose', 'ViewOverview', 'ViewNotes', 'ViewConsole', 'ViewSettings', 'StateDot', 'StateTitle', 'StateSub', 'BtnPlay', 'BtnStop', 'BtnSettings', 'HealthList', 'VersionText', 'BtnCommunity', 'LinkAllNotes', 'CardSetup', 'CardSetupTitle', 'CardSetupBody', 'CardRun', 'CardRunTitle', 'CardRunBody', 'CardNotes', 'CardNotesTitle', 'CardNotesBody', 'NotesList', 'LogPath', 'BtnLogSave', 'BtnLogCopy', 'BtnLogFolder', 'LogBox', 'TxtGame', 'BtnGameBrowse', 'CmbConsole', 'CmbRes', 'CmbBuild', 'CmbAdapter', 'BtnDetect', 'CmbUpscaler', 'ChkQuality', 'ChkRay', 'ChkPreload', 'ChkPortGuard', 'ChkMinimize', 'TxtCache', 'OpenCache', 'PickCache', 'TxtSaves', 'OpenSaves', 'PickSaves', 'TxtDlss', 'OpenDlss', 'PickDlss', 'TxtLogDir', 'OpenLogDir', 'PickLogDir', 'BtnSave', 'BtnRevert', 'BtnBack', 'SettingsMsg', 'LinkSupport', 'LinkPolicy', 'FooterVer')) {
+foreach ($n in @('NavOverview', 'NavNotes', 'NavConsole', 'NavWebsite', 'GpuBadge', 'NoticeBar', 'NoticeText', 'NoticeClose', 'ViewOverview', 'ViewNotes', 'ViewConsole', 'ViewSettings', 'StateDot', 'StateTitle', 'StateSub', 'BtnPlay', 'BtnStop', 'BtnSettings', 'HealthList', 'VersionText', 'BtnCommunity', 'LinkAllNotes', 'CardSetup', 'CardSetupTitle', 'CardSetupBody', 'CardRun', 'CardRunTitle', 'CardRunBody', 'CardNotes', 'CardNotesTitle', 'CardNotesBody', 'NotesList', 'LogPath', 'BtnLogSave', 'BtnLogCopy', 'BtnLogFolder', 'LogBox', 'TxtGame', 'BtnGameBrowse', 'CmbConsole', 'CmbRes', 'CmbBuild', 'CmbAdapter', 'BtnDetect', 'CmbUpscaler', 'ChkQuality', 'ChkRay', 'ChkPreload', 'ChkPortGuard', 'ChkMinimize', 'ChkPerfLog', 'TxtPerfInterval', 'TxtCache', 'OpenCache', 'PickCache', 'TxtSaves', 'OpenSaves', 'PickSaves', 'TxtDlss', 'OpenDlss', 'PickDlss', 'TxtLogDir', 'OpenLogDir', 'PickLogDir', 'BtnSave', 'BtnRevert', 'BtnBack', 'SettingsMsg', 'LinkSupport', 'LinkPolicy', 'FooterVer')) {
     $ui[$n] = $window.FindName($n)
 }
 
@@ -29,6 +29,7 @@ $script:BrushText = $script:Brushes.ConvertFromString('#E9EAF5')
 
 $script:RunId = 0
 $script:RunLog = ''
+$script:PerfLog = ''
 $script:LogKey = ''
 $script:RepoUrl = 'https://github.com/ASsDevpile/VIctory-NVIDIA'
 $script:Starting = $false
@@ -287,6 +288,10 @@ function Stop-Run {
     Get-Process victory*, victory_sm* -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
     if ($script:Starting) { $script:Stopping = $true }
     $script:RunId = 0
+    if ($script:PerfLog) {
+        Show-Notice ('Performance CSV saved to {0}' -f $script:PerfLog)
+        $script:PerfLog = ''
+    }
     $timer.Stop()
     Set-Running $false
     Update-State
@@ -299,10 +304,16 @@ $timer.Add_Tick({
         $alive = @(Get-Process -Id $script:RunId -ErrorAction SilentlyContinue).Count -gt 0
         if (-not $alive) {
             $script:RunId = 0
+            $perfLog = $script:PerfLog
+            $script:PerfLog = ''
             $timer.Stop()
             Set-Running $false
             Update-State
-            Show-Notice 'The run ended. Its whole log is saved next to the console path above.'
+            if ($perfLog) {
+                Show-Notice ('Performance CSV saved to {0}' -f $perfLog)
+            } else {
+                Show-Notice 'The run ended. Its whole log is saved next to the console path above.'
+            }
             return
         }
     }
@@ -344,12 +355,21 @@ $startTimer.Add_Tick({
     if ($run) {
         $script:RunId = [int]$run.pid
         $script:RunLog = [string]$run.log
+        $script:PerfLog = ''
+        if ($run.perf_log -and -not $run.perf_error) { $script:PerfLog = [string]$run.perf_log }
         $script:LogKey = ''
         $ui.LogPath.Text = $script:RunLog
         $ui.LogBox.Text = ''
         Set-Running $true
         Set-View 'Console'
         $timer.Start()
+        if ($run.perf_log) {
+            if ($run.perf_error) {
+                Show-Notice ('The game started, but its performance sampler could not start: {0}' -f $run.perf_error)
+            } else {
+                Show-Notice ('Performance samples will be saved to {0}' -f $run.perf_log)
+            }
+        }
         if ((Get-XenithConfig)['MINIMIZE'] -eq 'on') { $window.WindowState = 'Minimized' }
     } else {
         if (-not $script:Stopping) { Show-Notice ('the run did not start: {0}' -f $failed) }
@@ -389,6 +409,8 @@ function Update-SettingsUi {
     $ui.ChkPreload.IsChecked = ([string]$cfg['PRELOAD'] -eq 'on')
     $ui.ChkPortGuard.IsChecked = ([string]$cfg['PORT_GUARD'] -eq 'on')
     $ui.ChkMinimize.IsChecked = ([string]$cfg['MINIMIZE'] -eq 'on')
+    $ui.ChkPerfLog.IsChecked = ([string]$cfg['PERF_LOG'] -eq 'on')
+    $ui.TxtPerfInterval.Text = [string]$cfg['PERF_INTERVAL']
     $ui.TxtCache.Text = [string]$cfg['CACHE_DIR']
     $ui.TxtSaves.Text = [string]$cfg['SAVES_DIR']
     $ui.TxtDlss.Text = [string]$cfg['DLSS_DIR']
@@ -411,6 +433,14 @@ function Save-Settings {
     $patch['PRELOAD'] = ConvertTo-OnOff ([bool]$ui.ChkPreload.IsChecked)
     $patch['PORT_GUARD'] = ConvertTo-OnOff ([bool]$ui.ChkPortGuard.IsChecked)
     $patch['MINIMIZE'] = ConvertTo-OnOff ([bool]$ui.ChkMinimize.IsChecked)
+    $patch['PERF_LOG'] = ConvertTo-OnOff ([bool]$ui.ChkPerfLog.IsChecked)
+    $perfEvery = 0
+    $validPerfInterval = [int]::TryParse($ui.TxtPerfInterval.Text.Trim(), [ref]$perfEvery)
+    if (-not $validPerfInterval -or $perfEvery -lt 1 -or $perfEvery -gt 60) {
+        $ui.SettingsMsg.Text = 'Perf log interval must be 1-60 whole seconds'
+        return
+    }
+    $patch['PERF_INTERVAL'] = [string]$perfEvery
     $patch['CACHE_DIR'] = $ui.TxtCache.Text.Trim()
     $patch['SAVES_DIR'] = $ui.TxtSaves.Text.Trim()
     $patch['DLSS_DIR'] = $ui.TxtDlss.Text.Trim()

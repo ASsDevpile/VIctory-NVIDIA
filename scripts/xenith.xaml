@@ -566,6 +566,13 @@
                 <CheckBox x:Name="ChkPortGuard" Content="Experimental renderer port 6 (measure on your card)" Margin="0,0,28,6"/>
                 <CheckBox x:Name="ChkMinimize" Content="Minimize the launcher when the game starts" Margin="0,0,0,6"/>
               </WrapPanel>
+              <Grid Margin="0,8,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <CheckBox x:Name="ChkPerfLog" Content="Perf log (stability monitoring)" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Style="{StaticResource Label}" Text="Sample every" Margin="18,0,8,0"/>
+                <TextBox Grid.Column="2" x:Name="TxtPerfInterval" Width="54" Text="1" HorizontalContentAlignment="Center"/>
+                <TextBlock Grid.Column="3" Style="{StaticResource Label}" Text="seconds, for the full run; CSV saved in the log folder" Margin="8,0,0,0"/>
+              </Grid>
             </StackPanel>
           </Border>
 

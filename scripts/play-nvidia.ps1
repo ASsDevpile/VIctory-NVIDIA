@@ -25,6 +25,9 @@
 #                  folder (VICTORY_SAVES_DIR).
 # -Build           target\diag (the default, the build all measurements are of) or target\release
 #                  (the release build ignores the ray-tracing skip list: VICTORY_SKIP_PIPELINES is a diagnostics switch)
+# -PerfLog         sample CPU, RAM and GPU usage for the run; saves a CSV in the log folder
+# -PerfEvery       seconds between performance samples (1-60, default 1; used with -PerfLog)
+# -LogDir          folder for performance CSV output (default: debug-runs beside this script)
 # -PortGuard       experimental renderer port 6 write-watch path (off by default; measure on your card)
 # -WindowsBarMB    maximum MiB of title memory windows in CPU-mapped VRAM (by default 3072 on PCs with under
 #                  24 GB of RAM, else 0; -WindowsBarMB 0 turns it off).
@@ -46,6 +49,9 @@ param(
     [string]$SavesDir,
     [ValidateSet('diag', 'release')][string]$Build = 'diag',
     [int]$WindowsBarMB,
+    [switch]$PerfLog,
+    [ValidateRange(1, 60)][int]$PerfEvery = 1,
+    [string]$LogDir,
     [switch]$PortGuard,
     [hashtable]$More = @{}
 )
@@ -148,5 +154,23 @@ if ($Preload) {
 }
 $runArgs = @('run', $Exe, '--execute')
 if (-not $seriesX) { $runArgs += @('--console', 'series-s') }
+if ($PerfLog) {
+    if (-not $LogDir) { $LogDir = Join-Path $PSScriptRoot '..\debug-runs' }
+    New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
+    $perfLog = Join-Path $LogDir ("victory-perf-{0}-{1}.csv" -f (Get-Date -Format 'yyyyMMdd-HHmmss'), $PID)
+    $processName = [IO.Path]::GetFileNameWithoutExtension($victory)
+    $captureScript = Join-Path $PSScriptRoot 'capture-usage.ps1'
+    $captureArgs = @(
+        '-NoProfile', '-ExecutionPolicy', 'Bypass',
+        '-File', ('"{0}"' -f $captureScript),
+        '-Name', $processName,
+        '-Out', ('"{0}"' -f $perfLog),
+        '-Every', [string]$PerfEvery,
+        '-ExitWhenStopped',
+        '-WaitForProcessSeconds', '120'
+    )
+    Start-Process -FilePath 'powershell.exe' -ArgumentList $captureArgs -WindowStyle Hidden -ErrorAction Stop | Out-Null
+    Write-Host "Performance samples will be saved to $perfLog"
+}
 Push-Location (Join-Path $PSScriptRoot '..')   # victory.toml is looked for here
 try { & $victory @runArgs } finally { Pop-Location }

@@ -21,9 +21,15 @@ set "SKIP="
 set "CONSOLE=S"
 set "UPSCALER="
 set "PRELOAD=off"
+set "PERF_LOG=off"
+set "PERF_INTERVAL=1"
 set "CACHE_DIR="
 set "SAVES_DIR="
 set "DLSS_DIR="
+set "LOG_DIR="
+set "LOG_LEVEL=info"
+set "WINDOWS_BAR_MB="
+set "MINIMIZE=off"
 set "NVIDIA_CARD="
 set "EXTRA_ADVICE="
 if exist "xenith.ini" for /f "usebackq tokens=1,* delims==" %%a in ("xenith.ini") do set "%%a=%%b"
@@ -61,6 +67,7 @@ if defined ADAPTER echo adapter           %ADAPTER%
 echo quality %QUALITY%   ray tracing %RAYTRACING%
 echo renderer port 6 %PORT_GUARD% (experimental)
 echo console %CONSOLE%   upscaler %UPSCALER%   preload %PRELOAD%
+echo performance log %PERF_LOG%   sample every %PERF_INTERVAL% seconds
 echo.
 echo   1  Play                          (the fork's settings)
 echo   2  Play, release build           (faster)
@@ -107,6 +114,9 @@ if /i "%CONSOLE%"=="X" set "ARGS=%ARGS% -Console X"
 if /i "%UPSCALER%"=="dlss" set "ARGS=%ARGS% -Upscaler dlss"
 if /i "%PORT_GUARD%"=="on" set "ARGS=%ARGS% -PortGuard"
 if /i "%PRELOAD%"=="on" set "RUN_PRELOAD=1"
+if /i "%PERF_LOG%"=="on" set "ARGS=%ARGS% -PerfLog -PerfEvery %PERF_INTERVAL%"
+if defined LOG_DIR set "ARGS=%ARGS% -LogDir "%LOG_DIR%""
+if defined WINDOWS_BAR_MB set "ARGS=%ARGS% -WindowsBarMB %WINDOWS_BAR_MB%"
 if defined CACHE_DIR set "ARGS=%ARGS% -CacheDir "%CACHE_DIR%""
 if defined SAVES_DIR set "ARGS=%ARGS% -SavesDir "%SAVES_DIR%""
 if defined DLSS_DIR set "ARGS=%ARGS% -DlssDir "%DLSS_DIR%""
@@ -128,7 +138,6 @@ echo    2  Render height    %RESOLUTION%  (2160, 1440, 1080, 720, 540, 480)
 echo    3  Adapter          %ADAPTER%  (empty: the fastest%EXTRA_ADVICE%)
 echo    4  Quality          %QUALITY%  (fewer stretched bodies, rainbow skin)
 echo    5  Ray tracing      %RAYTRACING%
-echo    14 Renderer port 6  %PORT_GUARD%  (experimental, measure on your card)
 echo    6  Build            %BUILD%  (diag or release)
 echo    7  Skip pipelines   %SKIP%
 echo    8  Console          %CONSOLE%  (S is faster, X is the full output)
@@ -137,6 +146,9 @@ echo   10  Preload shaders  %PRELOAD%
 echo   11  Cache folder     %CACHE_DIR%  (empty: the victory.toml pick)
 echo   12  Saves folder     %SAVES_DIR%  (empty: beside the persistent storage)
 echo   13  DLSS folder      %DLSS_DIR%  (empty: a dlss folder here with the NGX files)
+echo   14  Perf log         %PERF_LOG%  (CSV in the log folder, follows the run)
+echo   15  Sample interval  %PERF_INTERVAL% seconds (1-60)
+echo   16  Renderer port 6  %PORT_GUARD%  (experimental, measure on your card)
 echo    0  Back
 echo.
 set "WHICH="
@@ -156,7 +168,9 @@ if "%WHICH%"=="10" call :ask PRELOAD "10 Preload shaders on or off"
 if "%WHICH%"=="11" call :ask CACHE_DIR "11 Cache folder (a full path, empty: the default)"
 if "%WHICH%"=="12" call :ask SAVES_DIR "12 Saves folder (a full path, empty: the default)"
 if "%WHICH%"=="13" call :ask DLSS_DIR "13 DLSS folder (a full path where nvngx*.dll lives; empty: dlss here)"
-if "%WHICH%"=="14" call :ask PORT_GUARD "14 Renderer port 6 on or off"
+if "%WHICH%"=="14" call :ask PERF_LOG "14 Performance CSV on or off"
+if "%WHICH%"=="15" call :ask PERF_INTERVAL "15 Sample interval in seconds (1-60)"
+if "%WHICH%"=="16" call :ask PORT_GUARD "16 Renderer port 6 on or off"
 call :save
 goto settings
 
@@ -174,5 +188,5 @@ if defined VALUE set "%~1=%VALUE%"
 goto :eof
 
 :save
-(for %%k in (GAME RESOLUTION ADAPTER QUALITY RAYTRACING PORT_GUARD BUILD SKIP UPSCALER CONSOLE PRELOAD CACHE_DIR SAVES_DIR DLSS_DIR) do echo %%k=!%%k!)>xenith.ini
+(for %%k in (GAME RESOLUTION ADAPTER QUALITY RAYTRACING PORT_GUARD BUILD SKIP UPSCALER CONSOLE PRELOAD CACHE_DIR SAVES_DIR DLSS_DIR LOG_DIR LOG_LEVEL WINDOWS_BAR_MB MINIMIZE PERF_LOG PERF_INTERVAL) do echo %%k=!%%k!)>xenith.ini
 goto :eof
