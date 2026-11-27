@@ -79,6 +79,23 @@ cargo build --locked --profile diag -p victory --features diagnostics
 scripts\play.ps1 -Exe <path of your copy's executable>
 ```
 
+DLSS Super Resolution is opt-in and requires the licensed
+[NVIDIA DLSS SDK](https://github.com/NVIDIA/DLSS) locally for its import
+library at build time. Keep the SDK and runtime DLLs out of this repository:
+
+```powershell
+$env:VICTORY_DLSS_SDK = 'D:\path\to\DLSS-SR'
+cargo build --locked --profile diag -p victory --features diagnostics,dlss
+scripts\play-nvidia.ps1 -Exe <path of your copy's executable> -Upscaler dlss -DlssDir 'D:\path\to\DLSS-SR\lib\Windows_x86_64\rel' -Resolution 720
+```
+
+The SDK root must contain `lib\Windows_x86_64\x64\nvsdk_ngx_d.lib`; for the
+official package, the runtime DLL is in `lib\Windows_x86_64\rel`. DLSS replaces only the title's FFX
+upscale dispatch. Other dispatches and failed NGX attempts fall back to the
+title's original FFX implementation. Frame Generation is not included. The
+feature is experimental; start with the known-stable 720p profile before
+testing higher render resolutions.
+
 Or use the launcher: `xenith.cmd` (a menu; a special copy of the
 [Xenith VI](https://github.com/ASsDevpile/XenithVI) launcher, changed for
 this fork) or its window, `xenith-ui.cmd`. Both keep their settings in
@@ -86,9 +103,10 @@ this fork) or its window, `xenith-ui.cmd`. Both keep their settings in
 quality, the upscaler, shader and pipeline preload, and where the cache, the saves and
 the DLSS files live) and start through `scripts\play-nvidia.ps1`. The card
 is found for you (the fastest is picked by default; the window names yours
-and lets you pick another). The upscaler row picks FSR (the title's own) or
-DLSS (not integrated yet; selecting it leaves the title on FSR). Do not
-expect NGX DLLs alone to enable DLSS. When preload is enabled, the window asks
+and lets you pick another). The upscaler row picks the title's own upscaler or
+experimental DLSS Super Resolution. DLSS requires a build with the `dlss`
+feature, the local SDK import library, and `nvngx_dlss.dll`; the title's
+original FFX path remains the fallback. When preload is enabled, the window asks
 before each launch and shows
 the current phase. It translates shader code and warms host pipelines before
 the run (minutes on the first pass or after a cache refresh); it does not

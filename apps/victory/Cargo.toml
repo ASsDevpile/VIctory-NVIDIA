@@ -25,6 +25,8 @@ tracing.workspace = true
 tempfile.workspace = true
 
 [features]
+# NVIDIA DLSS Super Resolution through the title's FidelityFX dispatch.
+dlss = ["victory-hle/dlss"]
 # Debug-level logs and the debugging switches (frame capture, stack dumps,
 # the host debug layer, scripted keys). Off in a plain release build.
 diagnostics = [

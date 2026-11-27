@@ -50,6 +50,8 @@ windows-core = { workspace = true, optional = true }
 tempfile.workspace = true
 
 [features]
+# Opt-in NVIDIA DLSS Super Resolution dispatch hook.
+dlss = ["victory-gpu/dlss"]
 # Debugging switches (scripted keys and the like).
 diagnostics = ["victory-gpu/diagnostics", "victory-loader/diagnostics", "dep:windows", "dep:windows-core"]
 

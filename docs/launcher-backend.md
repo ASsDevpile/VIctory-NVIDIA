@@ -36,10 +36,10 @@ A front end consumes it in one of two ways and must not bypass it:
 | `RAYTRACING` | `on`/`off`; off applies `scripts/rt_off_hashes.txt` |
 | `BUILD` | `diag` or `release` (which `target\<build>\victory.exe` to run) |
 | `SKIP` | pipeline skip preset (diagnostics) |
-| `UPSCALER` | empty (fork's own) or `dlss` (placeholder only; the title still uses FSR) |
+| `UPSCALER` | empty (fork's own), `fsr`, or experimental `dlss` (requires a DLSS-feature build and `nvngx_dlss.dll`; original FFX fallback) |
 | `CONSOLE` | `S` (1080p out) or `X` (2160p out) |
 | `PRELOAD` | `on` = translate + warm before every launch (minutes, once) |
-| `CACHE_DIR`, `SAVES_DIR`, `DLSS_DIR`, `LOG_DIR` | where those live; empty = defaults |
+| `CACHE_DIR`, `SAVES_DIR`, `DLSS_DIR`, `LOG_DIR` | where those live; `DLSS_DIR` contains `nvngx_dlss.dll`; empty = defaults |
 | `LOG_LEVEL` | how much the runtime logs during a run: `info` (the default, cheap), `debug` (the per-frame diagnostics spam; measurable fps) or `trace`; the white-screen probes need `debug` |
 | `PORT_RT` | `on` enables the experimental placed-copy ordering optimization (`VICTORY_PORT_RT=1`); off by default, compare with a matched run before keeping it on |
 | `PERF_LOG` | `on` = sample CPU, RAM and GPU usage for the whole run into a `victory-perf-<date>.csv` in the log folder (`scripts/capture-usage.ps1` follows the run's process id) |

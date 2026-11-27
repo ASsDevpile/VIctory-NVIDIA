@@ -93,12 +93,7 @@ function Test-XenithSetup {
     $dlssDir = $cfg.DLSS_DIR
     if ($cfg.UPSCALER -eq 'dlss') {
         if (-not $dlssDir) { $dlssDir = Join-Path $repo 'dlss' }
-        foreach ($file in @('nvngx_dlss.dll', 'sl.dlss.dll', 'sl.interposer.dll', 'sl.common.dll')) {
-            if (-not (Test-Path (Join-Path $dlssDir $file))) {
-                $dlssOk = $false
-                break
-            }
-        }
+        $dlssOk = Test-Path (Join-Path $dlssDir 'nvngx_dlss.dll')
     }
     [pscustomobject]@{
         game_ok        = ($cfg.GAME -and (Test-Path $cfg.GAME))
@@ -147,6 +142,11 @@ function Get-XenithPlaySet {
         $settings.VICTORY_RENDER_SCALE = ([int]$cfg.RESOLUTION / $outHeight).ToString('0.####', [Globalization.CultureInfo]::InvariantCulture)
     }
     if ($cfg.UPSCALER) { $settings.VICTORY_UPSCALER = $cfg.UPSCALER.ToLowerInvariant() }
+    if ($cfg.UPSCALER -eq 'dlss') {
+        $dlssDir = $cfg.DLSS_DIR
+        if (-not $dlssDir) { $dlssDir = Join-Path (Get-XenithRepo) 'dlss' }
+        $settings.VICTORY_DLSS_DIR = $dlssDir
+    }
     if ($cfg.ADAPTER) { $settings.VICTORY_D3D12_ADAPTER = $cfg.ADAPTER }
     if ($cfg.PORT_GUARD -eq 'on') { $settings.VICTORY_PORT_GUARD = '1' }
     if ($cfg.PORT_RT -eq 'on') { $settings.VICTORY_PORT_RT = '1' }

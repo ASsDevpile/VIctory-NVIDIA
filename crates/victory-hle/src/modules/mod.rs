@@ -16,6 +16,8 @@ pub mod display;
 pub mod dsp;
 #[cfg(windows)]
 pub mod dstorage;
+#[cfg(all(windows, feature = "dlss"))]
+mod ffx;
 #[cfg(windows)]
 pub mod files;
 pub mod gameinput;
@@ -72,5 +74,18 @@ pub(crate) fn all() -> Vec<HleModule> {
     all.push(xmem::module());
     #[cfg(windows)]
     all.push(xsystem::module());
+    #[cfg(all(windows, feature = "dlss"))]
+    if ffx::requested() {
+        tracing::info!("DLSS FFX dispatch interception enabled");
+        all.push(ffx::module());
+    }
+    #[cfg(all(windows, not(feature = "dlss")))]
+    if std::env::var("VICTORY_UPSCALER")
+        .is_ok_and(|value| value.trim().eq_ignore_ascii_case("dlss"))
+    {
+        tracing::warn!(
+            "VICTORY_UPSCALER=dlss was requested, but this binary was built without the dlss feature; the title's original FFX upscaler will run"
+        );
+    }
     all
 }

@@ -12,8 +12,8 @@
 #                  (-Adapter 1). Default: the fastest card (VICTORY_D3D12_ADAPTER, DXGI's GPU preference order).
 # -Console         Series S (the default, faster) or Series X (slower, full output); -SeriesX is the
 #                  same as -Console X.
-# -Upscaler        fsr (the default) or dlss (placeholder only: the title still uses FSR; DLSS is not integrated).
-# -DlssDir         the folder holding the Streamline SDK files; checked by Xenith, not loaded by the current runtime.
+# -Upscaler        fsr (the title's FFX path) or dlss (NGX Super Resolution; requires a dlss-feature build and nvngx_dlss.dll).
+# -DlssDir         the folder holding nvngx_dlss.dll (default: dlss\ beside this script).
 # -Preload         translate the title's shaders into the cache and make their pipelines before the run
 #                  (minutes, once): the run then starts without the first-seen-places hitches.
 # -CacheDir        where the runtime keeps its derived files (shader translations, pipelines, images)
@@ -127,7 +127,19 @@ if ($PSBoundParameters.ContainsKey('WindowsBarMB')) {
         Write-Host "$([math]::Round($ram / 1GB)) GB of RAM: title memory windows in card memory the CPU maps, up to 3 GB (-WindowsBarMB 0 turns this off)"
     }
 }
+if ($DlssDir) { $settings.VICTORY_DLSS_DIR = $DlssDir }
 foreach ($k in $More.Keys) { $settings[$k] = $More[$k] }
+$upscaler = [string]$settings.VICTORY_UPSCALER
+if ($upscaler -ieq 'dlss') {
+    $dlssRuntimeDir = [string]$settings.VICTORY_DLSS_DIR
+    if (-not $dlssRuntimeDir) {
+        $dlssRuntimeDir = Join-Path $PSScriptRoot '..\dlss'
+    }
+    if (-not (Test-Path (Join-Path $dlssRuntimeDir 'nvngx_dlss.dll'))) {
+        Write-Host "nvngx_dlss.dll was not found in $dlssRuntimeDir; DLSS will be unavailable and the title's FFX upscaler will run."
+    }
+    $settings.VICTORY_DLSS_DIR = $dlssRuntimeDir
+}
 $scale = [double]::Parse($settings.VICTORY_RENDER_SCALE, [Globalization.CultureInfo]::InvariantCulture)
 Write-Host "Series $console, rendering at $([int]($outHeight * $scale))p (render scale $($settings.VICTORY_RENDER_SCALE))"
 
@@ -145,7 +157,6 @@ if (-not $NoSmoothMotion) {
 # (Other settings left over in this window go; where your files are stays.)
 if ($CacheDir) { $env:VICTORY_CACHE_DIR = $CacheDir }
 if ($SavesDir) { $env:VICTORY_SAVES_DIR = $SavesDir }
-if ($DlssDir) { $env:VICTORY_DLSS_DIR = $DlssDir }
 $paths = 'VICTORY_CONFIG', 'VICTORY_GAME_DIR', 'VICTORY_CACHE_DIR', 'VICTORY_DATA_DIR', 'VICTORY_SAVES_DIR', 'VICTORY_DLSS_DIR'
 Get-ChildItem Env:VICTORY_* | Where-Object { $_.Name -notin $paths } | ForEach-Object { Remove-Item "Env:$($_.Name)" }
 foreach ($k in $settings.Keys) { Set-Item "Env:$k" $settings[$k] }

@@ -70,13 +70,11 @@ pub(crate) const RENDER_SCALE_ENV: &str = "VICTORY_RENDER_SCALE";
 /// Environment variable that makes the title use its own temporal upscaler
 /// on every console profile (Series S otherwise picks FSR).
 pub(crate) const OWN_UPSCALER_ENV: &str = "VICTORY_OWN_UPSCALER";
-/// Environment variable that forces the title's FSR path. `dlss` is a
-/// launcher placeholder; this runtime does not call Streamline/NGX yet.
-/// It wins over [`OWN_UPSCALER_ENV`].
+/// Environment variable that selects the title's FFX upscaling dispatch.
+/// `dlss` replaces its upscale dispatch with NGX when built with the `dlss`
+/// feature, and otherwise leaves the title's original FFX implementation in
+/// place. It wins over [`OWN_UPSCALER_ENV`].
 pub(crate) const UPSCALER_ENV: &str = "VICTORY_UPSCALER";
-/// Environment variable naming the folder Xenith checks for Streamline and
-/// NGX files. The current runtime only reports whether it found NGX DLLs.
-pub(crate) const DLSS_DIR_ENV: &str = "VICTORY_DLSS_DIR";
 
 /// A patch whose bytes are computed at load time.
 struct OwnedPatch {
@@ -163,30 +161,6 @@ fn parse_scale(text: &str) -> Option<f32> {
     (0.2..=1.0).contains(&v).then_some(v)
 }
 
-/// The folder with an NVIDIA NGX library, for diagnostics only: the
-/// [`DLSS_DIR_ENV`] folder first, then beside the title's executable.
-fn ngx_dir() -> Option<std::path::PathBuf> {
-    let named = std::env::var_os(DLSS_DIR_ENV)
-        .filter(|d| !d.is_empty())
-        .map(std::path::PathBuf::from);
-    let beside = std::env::current_exe()
-        .ok()
-        .and_then(|exe| exe.parent().map(|p| p.to_path_buf()));
-    [named, beside].into_iter().flatten().find(|dir| {
-        std::fs::read_dir(dir)
-            .into_iter()
-            .flatten()
-            .flatten()
-            .any(|e| {
-                let name = e.file_name();
-                let name = name.to_string_lossy();
-                name.len() > 4
-                    && name.rsplit('.').next() == Some("dll")
-                    && name.to_ascii_lowercase().starts_with("nvngx")
-            })
-    })
-}
-
 /// Applies the resolution levers asked for in the environment
 /// ([`RENDER_SCALE_ENV`], [`OWN_UPSCALER_ENV`]). Returns how many applied.
 ///
@@ -197,14 +171,14 @@ pub(crate) unsafe fn resolution_levers(base: usize, hash: &blake3::Hash) -> usiz
     let upscaler = std::env::var(UPSCALER_ENV)
         .ok()
         .map(|v| v.trim().to_ascii_lowercase());
-    let fsr_forced = matches!(upscaler.as_deref(), Some("fsr") | Some("dlss"));
-    if fsr_forced && std::env::var_os(OWN_UPSCALER_ENV).is_some_and(|v| v != "0") {
+    let ffx_forced = matches!(upscaler.as_deref(), Some("fsr") | Some("dlss"));
+    if ffx_forced && std::env::var_os(OWN_UPSCALER_ENV).is_some_and(|v| v != "0") {
         tracing::info!(
-            "{UPSCALER_ENV} runs the title's FSR path; {OWN_UPSCALER_ENV} is left aside"
+            "{UPSCALER_ENV} selects the title's FFX upscaling path; {OWN_UPSCALER_ENV} is left aside"
         );
     }
-    let own = !fsr_forced && std::env::var_os(OWN_UPSCALER_ENV).is_some_and(|v| v != "0");
-    if scale.is_none() && !own && !fsr_forced {
+    let own = !ffx_forced && std::env::var_os(OWN_UPSCALER_ENV).is_some_and(|v| v != "0");
+    if scale.is_none() && !own && !ffx_forced {
         return 0;
     }
     // Every image the loader maps comes here (the title's DLLs too); only
@@ -215,14 +189,8 @@ pub(crate) unsafe fn resolution_levers(base: usize, hash: &blake3::Hash) -> usiz
     }
     let mut applied = 0;
     if upscaler.as_deref() == Some("dlss") {
-        let dir = ngx_dir().map(|d| d.display().to_string());
         tracing::info!(
-            "DLSS placeholder: Streamline/NGX is not called; the title remains on FSR ({UPSCALER_ENV}=dlss); {}",
-            dir.as_deref()
-                .map(|d| format!("NGX DLLs were found at {d}, but are not loaded"))
-                .unwrap_or_else(|| format!(
-                    "no NGX DLL found; this setting still does not enable DLSS (the search folder is {DLSS_DIR_ENV})"
-                ))
+            "{UPSCALER_ENV}=dlss selects NGX Super Resolution at the title's FFX upscale dispatch; unavailable or failed NGX calls fall back to the original FFX dispatch"
         );
     }
     if own {
@@ -232,19 +200,14 @@ pub(crate) unsafe fn resolution_levers(base: usize, hash: &blake3::Hash) -> usiz
     if let Some(text) = scale {
         match parse_scale(&text) {
             Some(scale) => {
-                // With the own upscaler forced, FSR is left as it is; in its
-                // place `VICTORY_UPSCALER` runs FSR itself — and there the
-                // render-scale levers stay out: this build's FSR keeps its
-                // allocation at the sizes it ships with (1280x720 render on a
-                // Series S; it debug-asserts at any other — patches at the
-                // native 0.6667 came out a white window, and at a snapped
-                // 0.75 it died naming 1440x810). A proxied upscaler wants the
-                // FSR dispatch whole anyway; the scales are an own-upscaler
-                // lever.
-                if fsr_forced {
+                // The title's FFX path owns these allocations. Keep the
+                // render-scale patches out when it is selected; its dispatch
+                // is either handled by NGX or forwarded to the original FFX
+                // implementation.
+                if ffx_forced {
                     tracing::info!(
                         asked = scale,
-                        "{UPSCALER_ENV} has the title's FSR in charge and the levers stay out of its way: its allocation there is fixed at the sizes it ships with (the own upscaler, which takes any scale, keeps them)"
+                        "{UPSCALER_ENV} keeps render-scale patches out of the title's FFX path; its allocation remains at the sizes it ships with"
                     );
                 } else {
                     for p in render_scale_patches(base, scale, !own) {

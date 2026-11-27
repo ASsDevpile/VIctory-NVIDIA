@@ -24,6 +24,8 @@ blake3.workspace = true
 tempfile.workspace = true
 
 [features]
+# NVIDIA NGX DLSS Super Resolution (requires the user's local NVIDIA SDK).
+dlss = []
 # Debugging switches (frame capture, the host debug layer, per-draw data).
 diagnostics = []
 

@@ -58,16 +58,21 @@ an RTX card has been run yet, so nothing there is measured.
 | `VICTORY_PORT_RT=1` | experimental placed-copy ordering and safe fill forwarding; off by default. The upstream performance result was with the structure builder enabled on AMD, so it is not evidence of an RTX win; measure it separately after baseline stability is established |
 | `VICTORY_PIPELINE_WAIT_ONCE=0` | a pipeline that outlasts its wait budget waits again every frame, as before; unset, one budget over the whole run, its draws dropped until it is made |
 | `VICTORY_CLAMP_WAITS=0` | the indirect clamps keep their two global waits for earlier shader writes; unset they wait, where on a Radeon the waits were every clamp |
-| `VICTORY_UPSCALER=dlss` | **Not integrated yet.** Currently selects the title's FSR path and logs whether NGX DLLs are present; this fork does not call Streamline/NGX or replace the FSR dispatch. Do not select it expecting DLSS output. |
-| `VICTORY_DLSS_DIR` | the folder checked for NGX libraries (`nvngx*.dll`); the current placeholder does not load or call them. Keep vendor files out of the game's directory. |
-| `VICTORY_DLSS_TRACE=1` | diagnostics builds only: press F9 during gameplay to log one frame's compute-dispatch shader hashes and bound resource metadata, without saving target images; used to identify a future integration point |
+| `VICTORY_UPSCALER=dlss` | Experimental DLSS Super Resolution at the title's FFX upscale dispatch. Requires a `dlss`-feature build and `nvngx_dlss.dll`; failed or unavailable NGX calls fall back to the title's original FFX dispatch. Frame Generation is not included. |
+| `VICTORY_DLSS_DIR` | folder containing `nvngx_dlss.dll` (default: beside the executable). Keep NVIDIA runtime files out of the repository and game directory. |
+| `VICTORY_DLSS_QUALITY` | NGX quality mode `0`–`5` (default `2`); invalid values are logged and use `2`. |
+| `VICTORY_DLSS_PRESET` | optional NGX model preset `J`, `K`, `L`, or `M`; unset uses the SDK default. |
+| `VICTORY_DLSS_MV_SIGN`, `VICTORY_DLSS_JITTER_SIGN` | multiply the title's motion-vector or jitter values by `-1` or `1` when the game/API convention differs; both default to `1`. |
+| `VICTORY_DLSS_HDR`, `VICTORY_DLSS_DEPTH_INVERTED` | override automatic NGX flags with `0` or `1`; unset detects the colour format and near/far ordering. |
+| `VICTORY_DLSS_SHARPNESS` | NGX sharpness from `0` to `1` (default `0`). |
+| `VICTORY_DLSS_TRACE=1` | diagnostics builds only: press F9 during gameplay to log one frame's compute-dispatch shader hashes and bound resource metadata, without saving target images; useful when diagnosing renderer or fallback issues |
 | `VICTORY_SAVES_DIR` | where the title's saves live, instead of beside the persistent local storage in the data folder |
 
 ## The launchers and the script
 
-`scripts/play-nvidia.ps1` also takes `-Console S|X` (the Series X profile; `-SeriesX` keeps working), `-Upscaler fsr|dlss` (`dlss` is a placeholder and still runs FSR), `-DlssDir` (the folder Xenith checks for Streamline/NGX files), `-Preload` (`victory translate` and `victory warm` run first: the shaders are translated and their pipelines made before the game starts, minutes once, hitches gone after), `-CacheDir` and `-SavesDir` (`VICTORY_CACHE_DIR` and `VICTORY_SAVES_DIR`). `-PortGuard` opts into renderer port 6 for an A/B run. Experimental switches such as `VICTORY_PORT_RT` can be set for a single run through `-More`; keep them off while diagnosing unrelated startup failures. Xenith defaults its DLSS folder to the repository's `dlss\` directory.
+`scripts/play-nvidia.ps1` also takes `-Console S|X` (the Series X profile; `-SeriesX` keeps working), `-Upscaler fsr|dlss`, `-DlssDir` (the folder containing `nvngx_dlss.dll`), `-Preload` (`victory translate` and `victory warm` run first: the shaders are translated and their pipelines made before the game starts, minutes once, hitches gone after), `-CacheDir` and `-SavesDir` (`VICTORY_CACHE_DIR` and `VICTORY_SAVES_DIR`). `-PortGuard` opts into renderer port 6 for an A/B run. Experimental switches such as `VICTORY_PORT_RT` can be set for a single run through `-More`; keep them off while diagnosing unrelated startup failures. The DLSS build needs the local NVIDIA SDK import library; the runtime folder defaults to the repository's `dlss\` directory.
 
-The eventual DLSS path needs the title's render color, depth, motion vectors and output tagged at the upscaling point. The current runtime does not identify those inputs or invoke Streamline, so placing NGX files in a folder is not sufficient.
+Build DLSS locally with the licensed [NVIDIA DLSS SDK](https://github.com/NVIDIA/DLSS), `VICTORY_DLSS_SDK` pointing at the SDK root, and `cargo build --locked --profile diag -p victory --features diagnostics,dlss`. The root must contain `lib\Windows_x86_64\x64\nvsdk_ngx_d.lib`; the selected runtime folder must contain `nvngx_dlss.dll`. The hook passes the title's color, depth, motion vectors, exposure, jitter, and output resources to NGX and forwards non-upscale or failed calls to the original FFX export. Start with the known-stable 720p profile; higher resolutions remain unverified. DLSS Frame Generation is not included.
 
 ## Taken from the forks the trackers rank
 

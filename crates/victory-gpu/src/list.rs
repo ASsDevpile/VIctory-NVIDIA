@@ -2373,6 +2373,98 @@ static THIN_FUNCTIONS: Table<160> = Table(thin::table(false));
 #[cfg(windows)]
 static NEWER_THIN_FUNCTIONS: Table<160> = Table(thin::table(true));
 
+#[cfg(all(windows, feature = "dlss"))]
+pub struct Upscale {
+    pub colour: u64,
+    pub depth: u64,
+    pub motion: u64,
+    pub exposure: u64,
+    pub output: u64,
+    pub render: [u32; 2],
+    pub jitter: [f32; 2],
+    pub motion_scale: [f32; 2],
+    pub reset: bool,
+    pub pre_exposure: f32,
+    pub near: f32,
+    pub far: f32,
+    pub frame_ms: f32,
+}
+
+#[cfg(all(windows, feature = "dlss"))]
+pub fn upscale(this: *const std::ffi::c_void, up: &Upscale) -> bool {
+    let this: This = this.cast();
+    if this.is_null()
+        || up.colour == 0
+        || up.depth == 0
+        || up.motion == 0
+        || up.output == 0
+    {
+        return false;
+    }
+
+    let mut done = false;
+    with_state(this, |list, state| {
+        const SHADER_READ: u32 = 0x40;
+        const UNORDERED: u32 = 0x8;
+        let title_resource = |address: u64| address as usize as This;
+        let (colour, output) = (title_resource(up.colour), title_resource(up.output));
+        let (Some(from), Some(to), Some(host)) = (
+            crate::resource::host_resource(colour),
+            crate::resource::host_resource(output),
+            crate::host::host(),
+        ) else {
+            return;
+        };
+
+        let input = |address: u64| {
+            (address != 0)
+                .then(|| crate::resource::host_resource(title_resource(address)))
+                .flatten()
+        };
+        let (Some(depth), Some(motion)) = (input(up.depth), input(up.motion)) else {
+            static WARNED: std::sync::Once = std::sync::Once::new();
+            WARNED.call_once(|| {
+                tracing::warn!(
+                    "DLSS could not resolve the title's depth or motion-vector resource; using the original FFX dispatch"
+                );
+            });
+            return;
+        };
+        let exposure = input(up.exposure);
+
+        ensure_state(list, colour, SHADER_READ);
+        ensure_state(list, output, UNORDERED);
+        for resource in [up.depth, up.motion, up.exposure]
+            .into_iter()
+            .filter(|r| *r != 0)
+        {
+            ensure_state(list, title_resource(resource), SHADER_READ);
+        }
+
+        let inputs = crate::dlss::Inputs {
+            colour: from,
+            depth: Some(depth),
+            motion: Some(motion),
+            exposure,
+            output: to,
+            jitter: up.jitter,
+            motion_scale: up.motion_scale,
+            render: up.render,
+            reset: up.reset,
+            pre_exposure: up.pre_exposure,
+            near: up.near,
+            far: up.far,
+            frame_ms: up.frame_ms,
+        };
+        done = crate::dlss::record(&host.device, &list.list, &inputs);
+        state.replay(list);
+        if done {
+            crate::texture::host_written(output);
+        }
+    });
+    done
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

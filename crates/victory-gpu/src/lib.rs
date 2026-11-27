@@ -105,6 +105,8 @@ mod upload;
 mod watch;
 #[cfg(windows)]
 mod texback;
+#[cfg(all(windows, feature = "dlss"))]
+mod dlss;
 
 #[cfg(windows)]
 pub use host::on_failure;

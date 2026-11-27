@@ -363,7 +363,20 @@ fn poke(base: usize, size: usize) {
 /// DLLs the host or our runtime provide are never taken from the title.
 #[cfg(windows)]
 fn title_dll(host: &victory_hle::HostPolicy, dll: &str) -> bool {
-    !host.allows(dll) && !victory_hle::registry().iter().any(|m| m.serves(dll))
+    // The HLE hook intercepts imports, but fallback still needs the real DLL.
+    let keep_ffx_loader = is_dlss_ffx_loader(
+        dll,
+        cfg!(feature = "dlss")
+            && std::env::var("VICTORY_UPSCALER")
+                .is_ok_and(|value| value.trim().eq_ignore_ascii_case("dlss")),
+    );
+    !host.allows(dll)
+        && (keep_ffx_loader || !victory_hle::registry().iter().any(|m| m.serves(dll)))
+}
+
+#[cfg(any(windows, test))]
+fn is_dlss_ffx_loader(dll: &str, requested: bool) -> bool {
+    requested && dll.eq_ignore_ascii_case("amd_fidelityfx_loader_xbox.dll")
 }
 
 /// The DLLs among `imported` (the main image's static imports) that must
@@ -511,7 +524,23 @@ impl LoaderLock {
 
 #[cfg(test)]
 mod absent_tests {
-    use super::absent_title_dlls;
+    use super::{absent_title_dlls, is_dlss_ffx_loader};
+
+    #[test]
+    fn dlss_keeps_only_the_original_ffx_loader_available_for_fallback() {
+        assert!(is_dlss_ffx_loader(
+            "amd_fidelityfx_loader_xbox.dll",
+            true
+        ));
+        assert!(!is_dlss_ffx_loader(
+            "amd_fidelityfx_upscaler_xbox.dll",
+            true
+        ));
+        assert!(!is_dlss_ffx_loader(
+            "amd_fidelityfx_loader_xbox.dll",
+            false
+        ));
+    }
 
     #[test]
     fn title_dlls_missing_from_the_folder_are_named_once() {

@@ -310,8 +310,8 @@
       <tr><td><code>-Adapter</code></td><td>on more than one card, which one: part of its name or its index. Default: the fastest</td></tr>
       <tr><td><code>-Quality</code></td><td>fewer stretched bodies and less rainbow skin, at fewer frames</td></tr>
       <tr><td><code>-RayTracing</code></td><td>keep the title's ray-tracing passes (off by default)</td></tr>
-      <tr><td><code>-Upscaler</code></td><td><code>fsr</code> (the title's own); <code>dlss</code> is a placeholder and still uses FSR</td></tr>
-      <tr><td><code>-DlssDir</code></td><td>folder Xenith checks for Streamline/NGX files (<code>VICTORY_DLSS_DIR</code>); files are not loaded</td></tr>
+      <tr><td><code>-Upscaler</code></td><td><code>fsr</code> (the title's own); experimental <code>dlss</code> requires a DLSS-feature build and the NGX runtime DLL</td></tr>
+      <tr><td><code>-DlssDir</code></td><td>folder containing <code>nvngx_dlss.dll</code> (<code>VICTORY_DLSS_DIR</code>)</td></tr>
       <tr><td><code>-Preload</code></td><td>translate and warm before the run — see <a href="#preload">the preload</a></td></tr>
       <tr><td><code>-PerfLog</code> / <code>-PerfEvery</code></td><td>sample system and run CPU/RAM plus GPU utilization and memory into a CSV in <code>debug-runs</code> until the run exits; interval is 1–60 seconds (default 1)</td></tr>
       <tr><td><code>-PortRT</code></td><td>experimental placed-copy ordering path (off by default; compare matched runs; also available in Xenith Settings)</td></tr>
@@ -381,13 +381,16 @@
 
 <section id="dlss">
   <div class="wrap">
-    <h2>DLSS integration status</h2>
-    <p>DLSS is not integrated in this fork yet. Selecting the DLSS placeholder
-    still leaves the title on FSR; the runtime does not call Streamline/NGX or
-    replace the FSR dispatch. The official SDK files alone do not enable DLSS.</p>
+    <h2>Experimental DLSS Super Resolution</h2>
+    <p>The opt-in DLSS path intercepts the title's FFX upscaling dispatch and
+    submits its color, depth, motion-vector, exposure, jitter and output
+    resources to NVIDIA NGX. Other dispatches and failed NGX attempts fall back
+    to the title's original FFX implementation. This is Super Resolution only;
+    DLSS Frame Generation is not included.</p>
     <ol class="steps">
-      <li>The DLSS folder is currently checked for the official Streamline files, but no DLLs are loaded. In Xenith, point it at the SDK's <code>bin\x64</code> folder.</li>
-      <li>DLSS integration needs per-frame render color, depth, motion-vector and output resources tagged at the title's upscaling point. That integration is not implemented yet.</li>
+      <li>Get the licensed <a href="https://github.com/NVIDIA/DLSS">NVIDIA DLSS SDK</a> locally. Build on Windows with its import library: set <code>VICTORY_DLSS_SDK</code> to the SDK root and run <code>cargo build --locked --profile diag -p victory --features diagnostics,dlss</code>. The SDK root must contain <code>lib\Windows_x86_64\x64\nvsdk_ngx_d.lib</code>.</li>
+      <li>Set Xenith's DLSS folder or <code>-DlssDir</code> to a folder containing <code>nvngx_dlss.dll</code> (the official package's <code>lib\Windows_x86_64\rel</code> folder). The SDK and runtime binaries are not included in this repository; do not rename the AMD FFX DLLs to stand in for NGX.</li>
+      <li>Select <code>dlss</code> and start with the known-stable 720p render profile. Higher resolutions and live-game output are not yet verified; if the build lacks the feature or NGX cannot initialize/evaluate, logs explain the reason and the original FFX path runs instead.</li>
     </ol>
   </div>
 </section>
@@ -422,8 +425,8 @@
       <tr><td><code>VICTORY_PIPELINE_WAIT_ONCE=0</code></td><td>a pipeline past its wait budget waits again every frame, as before</td></tr>
       <tr><td><code>VICTORY_MEMORY_CARD_MB</code></td><td>the most of title memory on the card (4,096)</td></tr>
       <tr><td><code>VICTORY_D3D12_ADAPTER</code></td><td>which card makes the device (name part or index)</td></tr>
-      <tr><td><code>VICTORY_UPSCALER=dlss</code></td><td>placeholder only; the game still uses FSR and the runtime does not call Streamline</td></tr>
-      <tr><td><code>VICTORY_DLSS_DIR</code></td><td>folder Xenith checks for SDK files; the current runtime does not load them</td></tr>
+      <tr><td><code>VICTORY_UPSCALER=dlss</code></td><td>experimental NGX Super Resolution at the title's FFX upscale dispatch; failed calls fall back to the title's original FFX implementation</td></tr>
+      <tr><td><code>VICTORY_DLSS_DIR</code></td><td>folder containing the NGX runtime <code>nvngx_dlss.dll</code></td></tr>
       <tr><td><code>VICTORY_DLSS_TRACE=1</code></td><td>diagnostics build: press F9 in gameplay to log one frame of compute shader and resource metadata</td></tr>
       <tr><td><code>VICTORY_SAVES_DIR</code></td><td>where the title's saves live, instead of the data folder</td></tr>
       <tr><td>shader preload</td><td><code>victory translate</code> and <code>victory warm</code> before a run (or the launcher's preload tick): no first-seen-places hitches</td></tr>

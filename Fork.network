@@ -1,5 +1,5 @@
 VIctory fork watchlist
-Checked: 2026-11-27 09:28 UTC
+Checked: 2026-11-27 10:00 UTC
 
 Format: repository | default branch | observed tip | focus
 
@@ -7,22 +7,22 @@ Upstream
 Marvisak/VIctory | main | 63bcca43c6 | upstream runtime and shader changes
 
 Primary renderer forks
-ASsDevpile/VIctory-NVIDIA | main | 991bd52fe6 | this NVIDIA port; experimental placed-copy order
-trustno1-coder/VIctory-NVIDIA | main | 18a8dc2640 | NVIDIA runtime, launcher, input, embedded-DXBC prewarm fix
+ASsDevpile/VIctory-NVIDIA | main | 3404035309 | this NVIDIA port; DLSS status and diagnostics clarified
+trustno1-coder/VIctory-NVIDIA | main | 9341f4316f02 | NVIDIA runtime; BC7, raw-view, descriptor, and scheduling fixes
 avatarmanz/VIctory-7900XTX | main | 014d52dedf | AMD renderer ports and RT ordering
 Belobug/VIctory-Belobug-AMD | a-publier | 4eb6cfdf9e | AMD renderer and shader performance
-DoubleGhosty/cool_fox | main | d78b9eb5b2 | NVIDIA/AMD play sets, renderer ports, measurement fixes
+DoubleGhosty/cool_fox | main | bd8b4f524a1c | NVIDIA/AMD play sets; wave-wide shader EXEC correctness fix
 fxceless/victory-fork | main | 9a9091d180 | shader translation, memory system, ray-tracing builder
 soldsawn/victory-nvidia-8gb | main | c09a44e97d | NVIDIA 8 GB memory and launcher adaptations
-stellarr-studio/kelvaroq | main | e062a82e04 | independent NVIDIA memory/DXR implementation
+stellarr-studio/kelvaroq | main | 92606ea7f5da | independent NVIDIA memory/DXR implementation; corrected benchmark notes
 
 Additional active NVIDIA / performance lines
 Maykzera/victory-rtx3060 | main | 94be17f635 | RTX 3060, A/B benchmark and frame pacing
 gabeparra/victory-4090 | main | df7ec0702a | RTX 4090 under Linux/Proton; submit and memory changes
 MonkeOnYT-glitch/victory-nvidia | main | 8b3266e1c9 | NVIDIA adaptation of Belobug AMD line; benchmark notes
-runkmaskin/runkis-nvidia | main | be3973a409 | RTX tuning and interleaved A/B benchmark launcher
-Androtim/MiniVI | main | aabc5b8b5f | low-VRAM NVIDIA fork; texture retry and DXBC prewarm
-Bebrik229/VIctory-NVIDIA-Hybrid | main | c0841bc9d5 | 12 GB hybrid profile; Agility SDK bootstrap
+runkmaskin/runkis-nvidia | main | ccdd1ce564fe | RTX tuning; new HLE async/memory work and A/B notes
+Androtim/MiniVI | main | 60eb4feb584b | low-VRAM NVIDIA fork; BC7, raw-view, and helper-priority fixes
+Bebrik229/VIctory-NVIDIA-Hybrid | main | 4f3a5f032e17 | 12 GB hybrid profile; host/readback work and perf knobs
 whiteh4cker-tr/VIctory_sm86 | main | b079c378c5 | NVIDIA fork; includes embedded-DXBC extent fix
 aleksesipenko/VIctory-RTX | main | abb8adf362 | NVIDIA RTX, hardware DXR and upload/fence fixes
 Peppacodes/playablegames-peppa | main | 14d8e9dafd | NVIDIA 5080 performance line with AMD changes
@@ -33,8 +33,8 @@ Dolberthi/neptune-dolberth-nvidia-8gb | main | 99b231fae9 | NVIDIA 8 GB performa
 GiovannaSGuerrera/Victory-RTX2080 | main | c3040d96de | RTX 2080 snapshot and heap experiments
 
 Other active or platform-specific lines
-Zaxix/Defeat | main | 731558fb55 | active run reports, pipeline warm-up and shader-cache work
-rhythmhere/rhythm-VI | main | ae820470f3 | RTX 4050 / 6 GB adaptation
+Zaxix/Defeat | main | c7646c531cbb | pipeline warm-up and early compute creation experiments
+rhythmhere/rhythm-VI | main | bcfdce52e84c | RTX 4050 DLSS SR + Streamline DLSS-G experiment; not yet ported
 OctoAlgo/inkVI | main | 8c773ef02d | Linux/NVIDIA and Proton patch kit
 Skyfrye/anyXboxx-diffbase | main | 774774a711 | divergent NVIDIA line based on AnyXboxX
 kc01-8/VIctoryNVIDIALINUX | main | ab45d8a3fd | Linux NVIDIA snapshot
@@ -48,19 +48,34 @@ shadowdog00/rorodev6 | tracker label; repository URL returned 404 when checked
 codec-d/cool_fox | unavailable; reported 404, use DoubleGhosty/cool_fox mirror
 
 Recent review notes
-- trustno1-coder added a correctness fix to scan the declared DXBC container
-  extent, rather than hashing trailing bytes from its containing executable.
-  Ported locally in apps/victory/src/shader.rs with focused extent tests.
-- cool_fox's latest commit is Wine-specific SSE2 memcmp compatibility; not
-  applicable to this Windows D3D12 target. Other recent changes include
-  immutable march UAV lifetime handling; review separately if that path is
-  relevant to this title.
-- Dolberthi's latest performance commit spans pool sizing, descriptors,
-  indirect execution, synchronization, shader lowering and loader hooks;
-  not a safe single-change port.
+- trustno1-coder's earlier declared-DXBC-extent fix is already ported locally
+  in apps/victory/src/shader.rs with focused extent tests.
+- trustno1-coder and Androtim added BC7 rotation-mode correction, raw buffer
+  view bounds handling, and helper-thread priority changes. trustno1 also has
+  descriptor-heap ownership/lifetime fixes, ambient-probe cleanup, and an
+  opt-in Bink skip. Review candidates; none ported in this scan.
+- cool_fox added EXEC preservation for stores behind wave-wide SCC branches,
+  with shader regression tests. Potential shader-correctness candidate; not
+  ported pending review against this branch's shader lowering.
+- rhythmhere added direct NGX DLSS Super Resolution plus Streamline DLSS-G,
+  frame tagging, and a menu. The RTX 3060 may use DLSS SR, but DLSS-G is not
+  a target for this GPU. The integration spans SDK loading, resource/list
+  handling, and presentation; treat as a reference, not a safe cherry-pick.
+- runkmaskin added broad async HLE/scatter-map and memory bookkeeping changes;
+  not ported pending targeted review.
+- Bebrik229's 22-commit advance contains broad host/readback/memory lifetime
+  work and enables additional performance knobs. Not a safe bulk port; target
+  validation is needed.
+- Zaxix added early compute-pipeline creation and drop-reason accounting;
+  review separately before considering it for startup stalls.
+- stellarr-studio corrected its open-world benchmark interpretation in README;
+  no runtime changes in this update.
 - The placed-copy RT ordering/forwarding path is already present here and
   opt-in. The player's initial A/B report: slightly better, not revolutionary.
 - RTX 50 frame generation is not applicable to the RTX 3060. DualSense HID
   is unrelated to rendering.
 - fxceless's ray-tracing builder changes span memory tracking and shader paths;
   the current NVIDIA play set keeps that builder path disabled.
+- Dolberthi's earlier performance commit spans pool sizing, descriptors,
+  indirect execution, synchronization, shader lowering and loader hooks; not
+  a safe single-change port.

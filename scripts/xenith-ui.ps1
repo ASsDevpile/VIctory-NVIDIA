@@ -148,7 +148,7 @@ function Update-State {
     Add-HealthRow ('the runtime (target\{0})' -f $setup.build) ([bool]$setup.runtime_ok)
     Add-HealthRow 'the RT skip list (scripts\rt_off_hashes.txt)' ([bool]$setup.rt_list_ok)
     if ($cfg.UPSCALER -eq 'dlss') {
-        Add-HealthRow 'the Streamline + DLSS files in the DLSS folder' ([bool]$setup.dlss_ok)
+        Add-HealthRow 'the NGX runtime (nvngx_dlss.dll)' ([bool]$setup.dlss_ok)
     }
     if ($cfg.CACHE_DIR) { Add-HealthRow 'the cache folder' (Test-Path $cfg.CACHE_DIR) }
     if ($cfg.SAVES_DIR) { Add-HealthRow 'the saves folder' (Test-Path $cfg.SAVES_DIR) }
@@ -156,9 +156,14 @@ function Update-State {
 
     $missing = @()
     if (-not $setup.game_ok) { $missing += 'the game exe (Settings > Title)' }
-    if (-not $setup.runtime_ok) { $missing += 'the runtime: cargo build --locked --profile diag -p victory --features diagnostics' }
+    if (-not $setup.runtime_ok) {
+        if ($cfg.UPSCALER -eq 'dlss') {
+            $missing += 'the DLSS runtime: set VICTORY_DLSS_SDK to the NVIDIA SDK root, then cargo build --locked --profile diag -p victory --features diagnostics,dlss'
+        } else {
+            $missing += 'the runtime: cargo build --locked --profile diag -p victory --features diagnostics'
+        }
+    }
     if (-not $setup.rt_list_ok) { $missing += 'the RT skip list: scripts\rt_off_hashes.txt' }
-    if ($cfg.UPSCALER -eq 'dlss' -and -not $setup.dlss_ok) { $missing += 'the SDK files (nvngx_dlss.dll, sl.dlss.dll, sl.interposer.dll and sl.common.dll) in the DLSS folder' }
 
     if ($missing.Count -eq 0) {
         $ui.StateDot.Fill = $script:BrushOk
@@ -177,9 +182,9 @@ function Update-State {
 
     if ($cfg.UPSCALER -eq 'dlss') {
         if (-not $setup.dlss_ok) {
-            Show-Notice ('The DLSS folder ({0}) is missing files from NVIDIA''s Streamline SDK. Point Settings at its bin\x64 folder, or switch the upscaler back to the fork''s own.' -f $setup.dlss_dir)
+            Show-Notice ('DLSS requires a --features diagnostics,dlss build with VICTORY_DLSS_SDK. nvngx_dlss.dll was not found in {0}, so the title''s FFX upscaler will run; set Settings to a folder containing the NVIDIA runtime DLL to enable DLSS.' -f $setup.dlss_dir)
         } else {
-            Show-Notice 'DLSS is not integrated yet: these files are only detected, not loaded; the game still uses FSR. Switch to the fork''s own upscaler for normal play.'
+            Show-Notice 'DLSS Super Resolution is experimental. The runtime must be built with --features diagnostics,dlss and VICTORY_DLSS_SDK; failures fall back to the title''s FFX upscaler. Frame Generation is not included.'
         }
     } else {
         Hide-Notice
@@ -192,7 +197,8 @@ function Update-PlayCard {
     $which = 'Series S'
     if ($set.series_x) { $which = 'Series X' }
     $up = 'the fork''s own upscaler'
-    if ($cfg.UPSCALER) { $up = 'DLSS placeholder (FSR remains active)' }
+    if ($cfg.UPSCALER -eq 'dlss') { $up = 'DLSS SR (experimental; FFX fallback)' }
+    elseif ($cfg.UPSCALER) { $up = $cfg.UPSCALER }
     $rtPort = ''
     if ($cfg.PORT_RT -eq 'on') { $rtPort = '; experimental RT ordering on' }
     $ui.CardRunTitle.Text = ('{0}, rendering at {1}p' -f $which, $cfg.RESOLUTION)

@@ -42,4 +42,27 @@ fn main() {
     }
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rustc-env=VICTORY_TRANSLATOR={}", hash.finalize().to_hex());
+    println!("cargo:rerun-if-env-changed=VICTORY_DLSS_SDK");
+    let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    if std::env::var_os("CARGO_FEATURE_DLSS").is_some() && target_os == "windows" {
+        let sdk = std::env::var_os("VICTORY_DLSS_SDK")
+            .map(PathBuf::from)
+            .expect("the dlss feature requires VICTORY_DLSS_SDK to point to the NVIDIA DLSS SDK");
+        let candidates = [
+            sdk.join("lib/Windows_x86_64/x64"),
+            sdk.join("lib/Windows_x86_64/rel"),
+            sdk.join("lib/Windows_x86_64"),
+            sdk.join("lib"),
+            sdk,
+        ];
+        let Some(lib_dir) = candidates
+            .into_iter()
+            .find(|dir| dir.join("nvsdk_ngx_d.lib").is_file())
+        else {
+            panic!(
+                "VICTORY_DLSS_SDK has no nvsdk_ngx_d.lib in the supported lib folders"
+            );
+        };
+        println!("cargo:rustc-link-search=native={}", lib_dir.display());
+    }
 }
