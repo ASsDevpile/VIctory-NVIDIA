@@ -2516,7 +2516,7 @@ pub(crate) static MADE_AFTER_NO_ROOM: std::sync::atomic::AtomicU64 = std::sync::
 /// out of memory is worth asking again.
 #[cfg(windows)]
 fn no_texture(code: i32) -> NoTexture {
-    if code == E_OUTOFMEMORY.0 { NoTexture::ForNow } else { NoTexture::Refused }
+    if code == E_OUTOFMEMORY { NoTexture::ForNow } else { NoTexture::Refused }
 }
 
 /// A host texture like the title's: same description, in GPU memory,
@@ -2660,7 +2660,7 @@ fn host_texture_as(
         return Err(why);
     }
     if !reserved
-        && let Err(e) = crate::host::resident(&host.device, &texture.expect("made"))
+        && let Err(e) = crate::host::resident(&host.device, texture.as_ref().expect("made"))
             .and_then(|()| crate::host::mapped(&host.device))
     {
         tracing::warn!(error = %e, desc = ?d, "a host texture is not resident");
@@ -3431,8 +3431,8 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn only_a_card_without_room_is_asked_again() {
-        assert_eq!(no_texture(E_OUTOFMEMORY.0), NoTexture::ForNow);
-        assert_eq!(no_texture(E_INVALIDARG.0), NoTexture::Refused);
+        assert_eq!(no_texture(E_OUTOFMEMORY), NoTexture::ForNow);
+        assert_eq!(no_texture(E_INVALIDARG), NoTexture::Refused);
         assert_eq!(no_texture(0x887A_0005_u32 as i32), NoTexture::Refused); // device removed
     }
 
