@@ -397,15 +397,16 @@
 
 <section id="preload">
   <div class="wrap">
-    <h2>The shader <span class="grad">preload</span></h2>
-    <p>The first minutes of a fresh run translate the title's shaders into the
-    cache as the places that hold them are first seen — the hitches. The preload
-    does the work before the run, once:</p>
+    <h2>The shader and pipeline <span class="grad">preload</span></h2>
+    <p>The preload translates shaders and makes host pipelines before a run,
+    reducing first-seen hitches. Enable it in the launcher settings to be asked
+    before each launch:</p>
     <ol class="steps">
-      <li>The window's <strong>preload</strong> tick, the menu's item 7, or <code>-Preload</code> on the script.</li>
-      <li>It runs <code>victory translate</code> (the shaders into the cache) and then <code>victory warm</code> (the pipelines made) — minutes, once.</li>
+      <li>Enable preload in the launcher settings or use <code>-Preload</code> on the script; the window asks before each launch and shows the current stage with an indeterminate progress bar (the backend has no reliable overall percentage).</li>
+      <li>It runs <code>victory translate</code> (shader translations into the cache) and then <code>victory warm</code> (host pipelines made) - minutes on the first pass or after a cache refresh.</li>
       <li>The result is kept in the cache folder (<code>VICTORY_CACHE_DIR</code>, the script's <code>-CacheDir</code>): the runs after start without the first-seen hitches.</li>
     </ol>
+    <p>Game textures and world assets are streamed by the title at runtime, not bulk-loaded by this preload. D3D12 residency is budgeted and can fail or stall when the GPU is over budget; see Microsoft's <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/residency">residency guidance</a>.</p>
   </div>
 </section>
 

@@ -162,7 +162,7 @@ function Get-XenithPlaySet {
 }
 
 function Start-XenithRun {
-    param([switch]$Preload)
+    param([switch]$Preload, [switch]$SkipPreload, $ProgressState)
     $cfg = Get-XenithConfig
     $setup = Get-XenithPlaySet
     $perfEvery = 0
@@ -191,13 +191,16 @@ function Start-XenithRun {
         Copy-Item $exe $sm -Force
     }
     $victory = $sm
-    if ($Preload -or $cfg.PRELOAD -eq 'on') {
+    if (-not $SkipPreload -and ($Preload -or $cfg.PRELOAD -eq 'on')) {
         $env:VICTORY_GAME_DIR = Split-Path $game
+        if ($ProgressState) { $ProgressState['phase'] = 'translating' }
         $warm = Start-Process -FilePath $victory -ArgumentList 'translate' -WorkingDirectory $repo -NoNewWindow -Wait -PassThru
         if ($warm.ExitCode -ne 0) { throw ("translate failed with code {0}" -f $warm.ExitCode) }
+        if ($ProgressState) { $ProgressState['phase'] = 'warming' }
         $warm = Start-Process -FilePath $victory -ArgumentList 'warm' -WorkingDirectory $repo -NoNewWindow -Wait -PassThru
         if ($warm.ExitCode -ne 0) { throw ("warm failed with code {0}" -f $warm.ExitCode) }
     }
+    if ($ProgressState) { $ProgressState['phase'] = 'launching' }
     $runArgs = @('run', ('"' + $game + '"'), '--execute')
     if (-not $setup.series_x) { $runArgs += @('--console', 'series-s') }
     $proc = Start-Process -FilePath $victory -ArgumentList $runArgs -WorkingDirectory $repo -NoNewWindow -RedirectStandardOutput ($logFile + '.out') -RedirectStandardError $logFile -PassThru

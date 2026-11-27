@@ -18,7 +18,7 @@ Pop-Location
 $window = [Windows.Markup.XamlReader]::Parse((Get-Content (Join-Path $PSScriptRoot 'xenith.xaml') -Raw))
 
 $ui = @{}
-foreach ($n in @('NavOverview', 'NavNotes', 'NavConsole', 'NavWebsite', 'GpuBadge', 'NoticeBar', 'NoticeText', 'NoticeClose', 'ViewOverview', 'ViewNotes', 'ViewConsole', 'ViewSettings', 'StateDot', 'StateTitle', 'StateSub', 'BtnPlay', 'BtnStop', 'BtnSettings', 'HealthList', 'VersionText', 'BtnCommunity', 'LinkAllNotes', 'CardSetup', 'CardSetupTitle', 'CardSetupBody', 'CardRun', 'CardRunTitle', 'CardRunBody', 'CardNotes', 'CardNotesTitle', 'CardNotesBody', 'NotesList', 'LogPath', 'BtnLogSave', 'BtnLogCopy', 'BtnLogFolder', 'LogBox', 'TxtGame', 'BtnGameBrowse', 'CmbConsole', 'CmbRes', 'CmbBuild', 'CmbAdapter', 'BtnDetect', 'CmbUpscaler', 'ChkQuality', 'ChkRay', 'ChkPreload', 'ChkPortGuard', 'ChkMinimize', 'ChkPerfLog', 'TxtPerfInterval', 'TxtCache', 'OpenCache', 'PickCache', 'TxtSaves', 'OpenSaves', 'PickSaves', 'TxtDlss', 'OpenDlss', 'PickDlss', 'TxtLogDir', 'OpenLogDir', 'PickLogDir', 'BtnSave', 'BtnRevert', 'BtnBack', 'SettingsMsg', 'LinkSupport', 'LinkPolicy', 'FooterVer')) {
+foreach ($n in @('NavOverview', 'NavNotes', 'NavConsole', 'NavWebsite', 'GpuBadge', 'NoticeBar', 'NoticeText', 'NoticeClose', 'ViewOverview', 'ViewNotes', 'ViewConsole', 'ViewSettings', 'StateDot', 'StateTitle', 'StateSub', 'PreloadStage', 'PreloadProgress', 'BtnPlay', 'BtnStop', 'BtnSettings', 'HealthList', 'VersionText', 'BtnCommunity', 'LinkAllNotes', 'CardSetup', 'CardSetupTitle', 'CardSetupBody', 'CardRun', 'CardRunTitle', 'CardRunBody', 'CardNotes', 'CardNotesTitle', 'CardNotesBody', 'NotesList', 'LogPath', 'BtnLogSave', 'BtnLogCopy', 'BtnLogFolder', 'LogBox', 'TxtGame', 'BtnGameBrowse', 'CmbConsole', 'CmbRes', 'CmbBuild', 'CmbAdapter', 'BtnDetect', 'CmbUpscaler', 'ChkQuality', 'ChkRay', 'ChkPreload', 'ChkPortGuard', 'ChkMinimize', 'ChkPerfLog', 'TxtPerfInterval', 'TxtCache', 'OpenCache', 'PickCache', 'TxtSaves', 'OpenSaves', 'PickSaves', 'TxtDlss', 'OpenDlss', 'PickDlss', 'TxtLogDir', 'OpenLogDir', 'PickLogDir', 'BtnSave', 'BtnRevert', 'BtnBack', 'SettingsMsg', 'LinkSupport', 'LinkPolicy', 'FooterVer')) {
     $ui[$n] = $window.FindName($n)
 }
 
@@ -34,6 +34,8 @@ $script:LogKey = ''
 $script:RepoUrl = 'https://github.com/ASsDevpile/VIctory-NVIDIA'
 $script:Starting = $false
 $script:Stopping = $false
+$script:PreloadActive = $false
+$script:PreloadState = $null
 $script:Starter = $null
 $script:StartHandle = $null
 
@@ -264,19 +266,40 @@ function Set-Running {
 
 function Start-Run {
     if ($script:Starting) { return }
+    $skipPreload = $false
+    if ((Get-XenithConfig).PRELOAD -eq 'on') {
+        $answer = [System.Windows.MessageBox]::Show(
+            $window,
+            'Run shader translation and warm the pipeline cache before starting? Existing cache entries are reused; the first pass or a cache refresh can take several minutes. Choose No to launch without preloading this time.',
+            'Preload before launch',
+            [System.Windows.MessageBoxButton]::YesNoCancel,
+            [System.Windows.MessageBoxImage]::Question
+        )
+        if ($answer -eq [System.Windows.MessageBoxResult]::Cancel) { return }
+        $skipPreload = $answer -eq [System.Windows.MessageBoxResult]::No
+    }
     $script:Starting = $true
     $script:Stopping = $false
+    $script:PreloadActive = ((Get-XenithConfig).PRELOAD -eq 'on') -and -not $skipPreload
+    $script:PreloadState = [hashtable]::Synchronized(@{ phase = 'preparing' })
     $ui.BtnPlay.IsEnabled = $false
     $ui.StateTitle.Text = 'Starting...'
     $ui.StateSub.Text = 'the back end is preparing the run'
-    if ((Get-XenithConfig).PRELOAD -eq 'on') {
-        Show-Notice 'Preloading is on: the shaders are translated and their pipelines built before the game starts. This takes minutes the first time (and after a purge); the window stays responsive and STOP cancels it.'
+    if ($script:PreloadActive) {
+        $ui.PreloadStage.Text = 'Preparing shader and pipeline caches...'
+        $ui.PreloadStage.Visibility = 'Visible'
+        $ui.PreloadProgress.Visibility = 'Visible'
+    } else {
+        $ui.PreloadStage.Visibility = 'Collapsed'
+        $ui.PreloadProgress.Visibility = 'Collapsed'
     }
     $script:Starter = [powershell]::Create()
     $script:Starter.Runspace = [runspacefactory]::CreateRunspace()
     $script:Starter.Runspace.Open() | Out-Null
-    [void]$script:Starter.AddScript('param($dir); Set-Location $dir; . .\xenith-core.ps1; Start-XenithRun')
+    [void]$script:Starter.AddScript('param($dir, $state, $skip); Set-Location $dir; . .\xenith-core.ps1; Start-XenithRun -ProgressState $state -SkipPreload:$skip')
     [void]$script:Starter.AddArgument($PSScriptRoot)
+    [void]$script:Starter.AddArgument($script:PreloadState)
+    [void]$script:Starter.AddArgument($skipPreload)
     $script:StartHandle = $script:Starter.BeginInvoke()
     $startTimer.Start()
 }
@@ -335,8 +358,23 @@ $timer.Add_Tick({
 $startTimer = New-Object System.Windows.Threading.DispatcherTimer
 $startTimer.Interval = [TimeSpan]::FromMilliseconds(500)
 $startTimer.Add_Tick({
-    if (-not $script:StartHandle -or -not $script:StartHandle.IsCompleted) { return }
+    if (-not $script:StartHandle) { return }
+    if (-not $script:StartHandle.IsCompleted) {
+        if ($script:PreloadActive) {
+            $phase = [string]$script:PreloadState['phase']
+            switch ($phase) {
+                'translating' { $ui.PreloadStage.Text = 'Translating shader cache...' }
+                'warming' { $ui.PreloadStage.Text = 'Warming the pipeline cache...' }
+                'launching' { $ui.PreloadStage.Text = 'Starting the game...' }
+                default { $ui.PreloadStage.Text = 'Preparing shader and pipeline caches...' }
+            }
+        }
+        return
+    }
     $startTimer.Stop()
+    $ui.PreloadProgress.Visibility = 'Collapsed'
+    $ui.PreloadStage.Visibility = 'Collapsed'
+    $script:PreloadActive = $false
     $run = $null
     $failed = ''
     try {

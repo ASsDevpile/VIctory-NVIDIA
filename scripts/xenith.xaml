@@ -434,6 +434,11 @@
               <StackPanel Grid.Row="1">
                 <TextBlock x:Name="StateTitle" Text="Checking..." FontSize="28" FontWeight="SemiBold"/>
                 <TextBlock x:Name="StateSub" Text="" Foreground="{StaticResource DimBrush}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                <TextBlock x:Name="PreloadStage" Foreground="{StaticResource MintBrush}" TextWrapping="Wrap"
+                           Margin="0,12,0,0" Visibility="Collapsed"/>
+                <ProgressBar x:Name="PreloadProgress" Height="8" Margin="0,8,0,0" Minimum="0" Maximum="100"
+                             IsIndeterminate="True" Foreground="{StaticResource MintBrush}" Background="{StaticResource FieldBrush}"
+                             BorderThickness="0" Visibility="Collapsed"/>
               </StackPanel>
               <Grid Grid.Row="2" Margin="0,24,0,0">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -577,7 +582,7 @@
               <WrapPanel Margin="0,12,0,0">
                 <CheckBox x:Name="ChkQuality" Content="Quality patches (costs fps)" Margin="0,0,28,6"/>
                 <CheckBox x:Name="ChkRay" Content="Ray tracing on (slower)" Margin="0,0,28,6"/>
-                <CheckBox x:Name="ChkPreload" Content="Preload shaders before each run (minutes, once)" Margin="0,0,28,6"/>
+                <CheckBox x:Name="ChkPreload" Content="Preload shader + pipeline caches (asks before launch)" Margin="0,0,28,6"/>
                 <CheckBox x:Name="ChkPortGuard" Content="Experimental renderer port 6 (measure on your card)" Margin="0,0,28,6"/>
                 <CheckBox x:Name="ChkMinimize" Content="Minimize the launcher when the game starts" Margin="0,0,0,6"/>
               </WrapPanel>
