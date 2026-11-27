@@ -18,7 +18,7 @@ Pop-Location
 $window = [Windows.Markup.XamlReader]::Parse((Get-Content (Join-Path $PSScriptRoot 'xenith.xaml') -Raw))
 
 $ui = @{}
-foreach ($n in @('NavOverview', 'NavNotes', 'NavConsole', 'NavWebsite', 'GpuBadge', 'NoticeBar', 'NoticeText', 'NoticeClose', 'ViewOverview', 'ViewNotes', 'ViewConsole', 'ViewSettings', 'StateDot', 'StateTitle', 'StateSub', 'BtnPlay', 'BtnStop', 'BtnSettings', 'HealthList', 'VersionText', 'BtnCommunity', 'LinkAllNotes', 'CardSetup', 'CardSetupTitle', 'CardSetupBody', 'CardRun', 'CardRunTitle', 'CardRunBody', 'CardNotes', 'CardNotesTitle', 'CardNotesBody', 'NotesList', 'LogPath', 'BtnLogSave', 'BtnLogCopy', 'BtnLogFolder', 'LogBox', 'TxtGame', 'BtnGameBrowse', 'CmbConsole', 'CmbRes', 'CmbBuild', 'CmbAdapter', 'BtnDetect', 'CmbUpscaler', 'ChkQuality', 'ChkRay', 'ChkPreload', 'ChkMinimize', 'ChkPerfLog', 'TxtPerfInterval', 'TxtCache', 'OpenCache', 'PickCache', 'TxtSaves', 'OpenSaves', 'PickSaves', 'TxtDlss', 'OpenDlss', 'PickDlss', 'TxtLogDir', 'OpenLogDir', 'PickLogDir', 'BtnSave', 'BtnRevert', 'BtnBack', 'SettingsMsg', 'LinkSupport', 'LinkPolicy', 'FooterVer')) {
+foreach ($n in @('NavOverview', 'NavNotes', 'NavConsole', 'NavWebsite', 'GpuBadge', 'NoticeBar', 'NoticeText', 'NoticeClose', 'ViewOverview', 'ViewNotes', 'ViewConsole', 'ViewSettings', 'StateDot', 'StateTitle', 'StateSub', 'BtnPlay', 'BtnStop', 'BtnSettings', 'HealthList', 'VersionText', 'BtnCommunity', 'LinkAllNotes', 'CardSetup', 'CardSetupTitle', 'CardSetupBody', 'CardRun', 'CardRunTitle', 'CardRunBody', 'CardNotes', 'CardNotesTitle', 'CardNotesBody', 'NotesList', 'LogPath', 'BtnLogSave', 'BtnLogCopy', 'BtnLogFolder', 'LogBox', 'TxtGame', 'BtnGameBrowse', 'CmbConsole', 'CmbRes', 'CmbBuild', 'CmbAdapter', 'BtnDetect', 'CmbUpscaler', 'ChkQuality', 'ChkRay', 'ChkPreload', 'ChkPortGuard', 'ChkMinimize', 'ChkPerfLog', 'TxtPerfInterval', 'TxtCache', 'OpenCache', 'PickCache', 'TxtSaves', 'OpenSaves', 'PickSaves', 'TxtDlss', 'OpenDlss', 'PickDlss', 'TxtLogDir', 'OpenLogDir', 'PickLogDir', 'BtnSave', 'BtnRevert', 'BtnBack', 'SettingsMsg', 'LinkSupport', 'LinkPolicy', 'FooterVer')) {
     $ui[$n] = $window.FindName($n)
 }
 
@@ -407,6 +407,7 @@ function Update-SettingsUi {
     $ui.ChkQuality.IsChecked = ([string]$cfg['QUALITY'] -eq 'on')
     $ui.ChkRay.IsChecked = ([string]$cfg['RAYTRACING'] -eq 'on')
     $ui.ChkPreload.IsChecked = ([string]$cfg['PRELOAD'] -eq 'on')
+    $ui.ChkPortGuard.IsChecked = ([string]$cfg['PORT_GUARD'] -eq 'on')
     $ui.ChkMinimize.IsChecked = ([string]$cfg['MINIMIZE'] -eq 'on')
     $ui.ChkPerfLog.IsChecked = ([string]$cfg['PERF_LOG'] -eq 'on')
     $ui.TxtPerfInterval.Text = [string]$cfg['PERF_INTERVAL']
@@ -430,6 +431,7 @@ function Save-Settings {
     $patch['QUALITY'] = ConvertTo-OnOff ([bool]$ui.ChkQuality.IsChecked)
     $patch['RAYTRACING'] = ConvertTo-OnOff ([bool]$ui.ChkRay.IsChecked)
     $patch['PRELOAD'] = ConvertTo-OnOff ([bool]$ui.ChkPreload.IsChecked)
+    $patch['PORT_GUARD'] = ConvertTo-OnOff ([bool]$ui.ChkPortGuard.IsChecked)
     $patch['MINIMIZE'] = ConvertTo-OnOff ([bool]$ui.ChkMinimize.IsChecked)
     $patch['PERF_LOG'] = ConvertTo-OnOff ([bool]$ui.ChkPerfLog.IsChecked)
     $perfEvery = 0

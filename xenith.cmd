@@ -15,6 +15,7 @@ set "RESOLUTION="
 set "ADAPTER="
 set "QUALITY=on"
 set "RAYTRACING=off"
+set "PORT_GUARD=off"
 set "BUILD=diag"
 set "SKIP="
 set "CONSOLE=S"
@@ -64,6 +65,7 @@ if defined NVIDIA_CARD (echo card              %NVIDIA_CARD%) else echo card    
 if defined RESOLUTION echo render height    %RESOLUTION%
 if defined ADAPTER echo adapter           %ADAPTER%
 echo quality %QUALITY%   ray tracing %RAYTRACING%
+echo renderer port 6 %PORT_GUARD% (experimental)
 echo console %CONSOLE%   upscaler %UPSCALER%   preload %PRELOAD%
 echo performance log %PERF_LOG%   sample every %PERF_INTERVAL% seconds
 echo.
@@ -110,6 +112,7 @@ if defined RESOLUTION set "ARGS=%ARGS% -Resolution %RESOLUTION%"
 if defined ADAPTER set "ARGS=%ARGS% -Adapter "%ADAPTER%""
 if /i "%CONSOLE%"=="X" set "ARGS=%ARGS% -Console X"
 if /i "%UPSCALER%"=="dlss" set "ARGS=%ARGS% -Upscaler dlss"
+if /i "%PORT_GUARD%"=="on" set "ARGS=%ARGS% -PortGuard"
 if /i "%PRELOAD%"=="on" set "RUN_PRELOAD=1"
 if /i "%PERF_LOG%"=="on" set "ARGS=%ARGS% -PerfLog -PerfEvery %PERF_INTERVAL%"
 if defined LOG_DIR set "ARGS=%ARGS% -LogDir "%LOG_DIR%""
@@ -143,8 +146,9 @@ echo   10  Preload shaders  %PRELOAD%
 echo   11  Cache folder     %CACHE_DIR%  (empty: the victory.toml pick)
 echo   12  Saves folder     %SAVES_DIR%  (empty: beside the persistent storage)
 echo   13  DLSS folder      %DLSS_DIR%  (empty: a dlss folder here with the NGX files)
-echo   14  Perf log         %PERF_LOG%  (CSV in debug-runs, follows the run)
+echo   14  Perf log         %PERF_LOG%  (CSV in the log folder, follows the run)
 echo   15  Sample interval  %PERF_INTERVAL% seconds (1-60)
+echo   16  Renderer port 6  %PORT_GUARD%  (experimental, measure on your card)
 echo    0  Back
 echo.
 set "WHICH="
@@ -166,6 +170,7 @@ if "%WHICH%"=="12" call :ask SAVES_DIR "12 Saves folder (a full path, empty: the
 if "%WHICH%"=="13" call :ask DLSS_DIR "13 DLSS folder (a full path where nvngx*.dll lives; empty: dlss here)"
 if "%WHICH%"=="14" call :ask PERF_LOG "14 Performance CSV on or off"
 if "%WHICH%"=="15" call :ask PERF_INTERVAL "15 Sample interval in seconds (1-60)"
+if "%WHICH%"=="16" call :ask PORT_GUARD "16 Renderer port 6 on or off"
 call :save
 goto settings
 
@@ -183,5 +188,5 @@ if defined VALUE set "%~1=%VALUE%"
 goto :eof
 
 :save
-(for %%k in (GAME RESOLUTION ADAPTER QUALITY RAYTRACING BUILD SKIP UPSCALER CONSOLE PRELOAD CACHE_DIR SAVES_DIR DLSS_DIR LOG_DIR LOG_LEVEL WINDOWS_BAR_MB MINIMIZE PERF_LOG PERF_INTERVAL) do echo %%k=!%%k!)>xenith.ini
+(for %%k in (GAME RESOLUTION ADAPTER QUALITY RAYTRACING PORT_GUARD BUILD SKIP UPSCALER CONSOLE PRELOAD CACHE_DIR SAVES_DIR DLSS_DIR LOG_DIR LOG_LEVEL WINDOWS_BAR_MB MINIMIZE PERF_LOG PERF_INTERVAL) do echo %%k=!%%k!)>xenith.ini
 goto :eof

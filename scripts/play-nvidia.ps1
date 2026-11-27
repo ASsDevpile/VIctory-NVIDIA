@@ -28,6 +28,7 @@
 # -PerfLog         sample CPU, RAM and GPU usage for the run; saves a CSV in the log folder
 # -PerfEvery       seconds between performance samples (1-60, default 1; used with -PerfLog)
 # -LogDir          folder for performance CSV output (default: debug-runs beside this script)
+# -PortGuard       experimental renderer port 6 write-watch path (off by default; measure on your card)
 # -WindowsBarMB    maximum MiB of title memory windows in CPU-mapped VRAM (by default 3072 on PCs with under
 #                  24 GB of RAM, else 0; -WindowsBarMB 0 turns it off).
 # -More            other settings: -More @{VICTORY_PANEL='1'}
@@ -51,6 +52,7 @@ param(
     [switch]$PerfLog,
     [ValidateRange(1, 60)][int]$PerfEvery = 1,
     [string]$LogDir,
+    [switch]$PortGuard,
     [hashtable]$More = @{}
 )
 $seriesX = $SeriesX -or $Console -eq 'X'
@@ -111,6 +113,7 @@ if ($Resolution) {
     $settings.VICTORY_RENDER_SCALE = ([int]$Resolution / $outHeight).ToString('0.####', [Globalization.CultureInfo]::InvariantCulture)
 }
 if ($Adapter) { $settings.VICTORY_D3D12_ADAPTER = $Adapter }
+if ($PortGuard) { $settings.VICTORY_PORT_GUARD = '1' }
 if ($PSBoundParameters.ContainsKey('WindowsBarMB')) {
     $settings.VICTORY_WINDOWS_BAR_MB = $WindowsBarMB.ToString([Globalization.CultureInfo]::InvariantCulture)
 } else {
