@@ -124,6 +124,9 @@ function Get-XenithPlaySet {
         VICTORY_SHOW_AFTER = '1'; VICTORY_AMBIENT = '0.8'; VICTORY_D3D12_DRED = 'light'; VICTORY_SKIP_PIPELINES = 'none'
         # RTX 3060 A/B: joining 16 parts improved frame-time lows; average FPS stayed within run noise.
         VICTORY_THIN = '1'; VICTORY_JOIN_PARTS = '16'; VICTORY_JOIN_LISTS = '96'; VICTORY_UPLOAD_AHEAD = '1'
+        # Keep two presents in the submission queue so the game can record the
+        # next frame while victory-submit prepares the previous one.
+        VICTORY_SUBMIT_FRAMES = '2'
         VICTORY_PORT_CBV = '1'
         VICTORY_AMBIENT_AIR = '1.5'; VICTORY_AMBIENT_MOST = '2'; VICTORY_NAN_SCRUB = '1'
         VICTORY_PIPELINE_WAIT_MS = '10000'; VICTORY_DYNAMIC_SLOTS = '524288'
