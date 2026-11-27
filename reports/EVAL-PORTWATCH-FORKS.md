@@ -332,3 +332,55 @@ The `VICTORY_GUARD_HOT` extension stays off because Belobug measured it as
 worse (45.6 to 47.8 ms per frame in run `guard-6`). Port 7's journal sharding
 is deferred: it changes more synchronization and should not be combined with
 port 6 before measuring the latter on NVIDIA.
+
+## The port 6 A/B on the RTX 3060, and the 2026-11-27 tip sweep
+
+The A/B the port 6 section asked for is done, on the reporter's RTX 3060 12 GB
+(Windows 11, 1080p out, own upscaler at its minimum scale, the play set as the
+launcher writes it). Two runs of about five minutes in the same place of the
+game, one with the launcher's port 6 checkbox on and one with it off, each with
+its usage CSV beside the log:
+
+- with port 6: 4.25 fps steady-state mean (median 3.3), GPU 74.9% busy,
+  324 faults a frame opened under the shared lock, 0.37 ms a frame waiting
+  for it; the run's own thread at 20% of a core.
+- without: 4.89 fps steady-state mean (median 3.7), GPU 86.5% busy, the same
+  draw load (about 3,200-5,900 draws a frame in both).
+
+Port 6 measures slower on this card, not faster; the guard's shared lock costs
+more than its refresh planning gives back at this draw count. It stays off by
+default and the checkbox stays for retests. The A/B also says what a frame
+waits for here: of about 310 ms a frame only 37 are the host's preparing and
+18 the copying back - the rest is the card executing the translated draws. The
+lever for this card is cheaper translated work and fewer draws, not more host
+synchronization; port 7 stays deferred.
+
+The sweep of the tips the same morning:
+
+- **Belobug's `main` line** (their `a-publier`, the 22 fps line, has none of
+  it): the clean-up passes over translated shaders (`ae75a66a`) are already
+  this tree's `emit/bitcode/opt.rs`, ours carrying the later FIRST and WIDE
+  constants on top. `VICTORY_ASYNC_SUBMIT` by default is already ours in
+  effect - the play set's `VICTORY_THIN=1` turns the same path on, and the
+  logs show the submissions sent ahead with 0.0 ms waiting for the card. The
+  views table's read-write lock (`ff920f22`) is already in this tree's
+  `descriptor.rs`. The least-level-of-detail views (`5d7bd16d`) change nothing
+  for this title by their own measurement. The bindless-plan rebuild fix and
+  the ambient-sky work (`705a2d09` and around) are one entangled commit - on
+  the shelf with their screen-probes program skip (`6986a571`, which this
+  tree can carry on `Shader.container`'s bytes with `VICTORY_RAYS` as the
+  escape, but which needs eyes on the picture before it defaults here).
+- **kelvaroq** (stellarr-studio, the public NVIDIA leader at 10 fps on a
+  4090) `e062a82e`: their new work is a unified-memory layer and DXR, shipped
+  as 16 patch files (`native/patches/0049`-`0064`, 20,660 lines) against
+  their own tree, all off by default. Not portable piecemeal. The one idea
+  aimed at exactly this tree's bottleneck is their indirect batching
+  (`0051-indirect`: several of the title's indirect records clamped into one
+  scratch batch instead of one host pass each) - on the shelf as the next
+  draw-side port to take piece by piece on a Windows measurement machine.
+- **The chase for 24 fps**: Belobug's number is an RX 9070 XT, a card several
+  times this one at raster. With the host's share of the frame already at
+  12%, the realistic order for this 3060 is the indirect batching above,
+  then whatever the next sweep finds in translated-shader cost, and on the
+  user's side the output height (`RESOLUTION` 720 or 540 in the launcher),
+  since the card is already at its minimum render scale.
